@@ -23,12 +23,20 @@ header p{font-size:13px;color:var(--muted);}
 .col-right{display:flex;flex-direction:column;gap:12px;}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;}
 .card-title{font-size:11px;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem;}
+
+/* Progress */
 .goal-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
 .goal-nums{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--text);}
 .goal-nums span{color:var(--accent);}
 .prog-bg{background:var(--border);border-radius:99px;height:6px;width:100%;overflow:hidden;}
 .prog-fill{background:var(--accent);height:6px;border-radius:99px;transition:width .5s ease;}
 .prog-label{font-size:11px;color:var(--muted);margin-top:5px;font-family:'DM Mono',monospace;}
+.goal-edit-row{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap;}
+.goal-edit-row label{font-size:12px;color:var(--muted);}
+input[type=number]{width:70px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:15px;font-family:'DM Mono',monospace;background:var(--surface2);color:var(--text);text-align:center;outline:none;}
+input[type=number]:focus{border-color:var(--accent);}
+
+/* Sets */
 .plan-info{font-size:12px;color:var(--muted);margin-bottom:12px;font-family:'DM Mono',monospace;}
 .sets-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
 .set-btn{border:1px solid var(--border);border-radius:8px;padding:10px 4px;text-align:center;cursor:pointer;background:var(--surface2);color:var(--text);transition:all .12s;user-select:none;}
@@ -37,6 +45,8 @@ header p{font-size:13px;color:var(--muted);}
 .set-btn.done{background:#1e2e0a;color:var(--accent);border-color:#4a6e14;}
 .set-btn.active{background:#1c2a00;color:var(--accent);border:2px solid var(--accent);}
 .set-btn:hover:not(.done):not(.active){border-color:#444;}
+
+/* Stopwatch */
 .sw-display{font-family:'Bebas Neue',sans-serif;font-size:56px;color:var(--accent);text-align:center;letter-spacing:2px;line-height:1;margin:0.5rem 0;}
 .sw-label{font-size:11px;color:var(--muted);text-align:center;margin-bottom:0.75rem;}
 .btn-row{display:flex;gap:8px;justify-content:center;}
@@ -47,6 +57,8 @@ button:active{transform:scale(0.97);}
 .btn-accent:hover{background:#b5da50;border-color:#b5da50;}
 .btn-danger{border-color:#ff5c5c44;color:var(--red);}
 .btn-danger:hover{background:#2a1010;}
+
+/* Calendar */
 .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
 .cal-month{font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--text);}
 .cal-nav{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:4px 8px;}
@@ -58,21 +70,40 @@ button:active{transform:scale(0.97);}
 .cal-day.has-session{background:#1e2e0a;color:var(--accent);font-weight:500;}
 .cal-day.today{border:1px solid var(--border);color:var(--text);}
 .cal-day.selected{background:var(--accent);color:#111;font-weight:500;}
+.cal-day.has-session.selected{background:var(--accent);color:#111;}
 .cal-day.empty{cursor:default;}
 .cal-day.empty:hover{background:none;}
-.next-box{background:#1c2a00;border:1px solid #3a5a00;border-radius:8px;padding:1rem;}
+
+/* Next session box */
+.next-box{border-radius:8px;padding:1rem;}
+.next-box.ready{background:#1c2a00;border:1px solid #3a5a00;}
+.next-box.wait{background:var(--surface2);border:1px solid var(--border);}
 .next-title{font-size:11px;color:var(--accent-dim);margin-bottom:4px;letter-spacing:0.08em;text-transform:uppercase;}
 .next-date{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent);}
 .next-sub{font-size:12px;color:var(--muted);margin-top:3px;}
+.next-box.wait .next-date{color:var(--text);}
+
+/* After session: pick next day prompt */
+.pick-next{background:#1c2a00;border:1px solid #3a5a00;border-radius:8px;padding:1rem;margin-top:10px;display:none;}
+.pick-next p{font-size:13px;color:var(--accent);margin-bottom:6px;}
+.pick-next small{font-size:11px;color:var(--muted);}
+
+/* History */
 .history-item{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;}
 .history-item:last-child{border-bottom:none;}
 .history-reps{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);}
 .badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:99px;background:#1c2a00;color:var(--accent);margin-left:6px;}
-.chart-wrap{position:relative;height:80px;margin-top:4px;}
-.max-row{display:flex;gap:8px;align-items:center;margin-top:10px;}
-input[type=number]{width:70px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:15px;font-family:'DM Mono',monospace;background:var(--surface2);color:var(--text);text-align:center;outline:none;}
-input[type=number]:focus{border-color:var(--accent);}
 .empty-state{font-size:13px;color:var(--muted);}
+
+/* Popup */
+.popup-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:100;opacity:0;pointer-events:none;transition:opacity .2s;}
+.popup-overlay.show{opacity:1;pointer-events:all;}
+.popup{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;max-width:320px;width:90%;}
+.popup h3{font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--accent);margin-bottom:0.5rem;}
+.popup p{font-size:13px;color:var(--muted);margin-bottom:4px;}
+.popup .sets-summary{font-family:'DM Mono',monospace;font-size:12px;color:var(--text);margin:10px 0;line-height:1.8;}
+.popup-close{margin-top:1rem;width:100%;}
+
 @media(max-width:640px){.grid{grid-template-columns:1fr;}.col-right{order:-1;}header h1{font-size:32px;}}
 </style>
 </head>
@@ -81,29 +112,44 @@ input[type=number]:focus{border-color:var(--accent);}
   <header>
     <div>
       <h1>Klimmzug-Tracker</h1>
-      <p>Ziel: 20 Klimmzüge — Ende 2026</p>
+      <p>Ziel: <span id="goalDisplay">20</span> Klimmzüge — Ende 2026</p>
     </div>
     <div class="streak-badge" id="streakBadge">0 Wochen</div>
   </header>
+
   <div class="grid">
     <div class="col-left">
+
+      <!-- Progress -->
       <div class="card">
         <div class="card-title">Fortschritt zum Ziel</div>
         <div class="goal-row">
           <div class="goal-nums">Max: <span id="maxDisplay">8</span></div>
-          <div style="font-size:12px;color:var(--muted);">Ziel: 20</div>
+          <div style="font-size:12px;color:var(--muted);">Ziel: <span id="goalDisplay2">20</span></div>
         </div>
         <div class="prog-bg"><div class="prog-fill" id="progressBar"></div></div>
         <div class="prog-label" id="progressText"></div>
-        <div class="max-row">
-          <input type="number" id="maxInput" value="8" min="1" max="30"/>
-          <button class="btn-accent" onclick="updateMax()">Max aktualisieren</button>
+        <div class="goal-edit-row">
+          <label>Mein Max:</label>
+          <input type="number" id="maxInput" value="8" min="1" max="50"/>
+          <label>Ziel:</label>
+          <input type="number" id="goalInput" value="20" min="1" max="100"/>
+          <button class="btn-accent" onclick="updateGoals()">Aktualisieren</button>
         </div>
       </div>
+
+      <!-- Training -->
       <div class="card">
-        <div class="card-title">Training — <span id="sessionLabel"></span></div>
+        <div class="card-title">Training — <span id="sessionLabel">Session 1</span></div>
         <div class="plan-info" id="planInfo"></div>
         <div class="sets-grid" id="setsGrid"></div>
+
+        <!-- After session prompt -->
+        <div class="pick-next" id="pickNextPrompt">
+          <p>✓ Training abgeschlossen! Wähle jetzt deinen nächsten Trainingstag im Kalender.</p>
+          <small>Empfehlung: mindestens 2 Tage Pause.</small>
+        </div>
+
         <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
           <div class="card-title" style="margin-bottom:8px;">Stoppuhr — Pause</div>
           <div class="sw-label">Zwischen den Sätzen messen</div>
@@ -114,16 +160,17 @@ input[type=number]:focus{border-color:var(--accent);}
           </div>
         </div>
       </div>
-      <div class="card">
-        <div class="card-title">Max-Verlauf</div>
-        <div class="chart-wrap"><canvas id="progressChart"></canvas></div>
-      </div>
+
+      <!-- History -->
       <div class="card">
         <div class="card-title">Verlauf</div>
         <div id="historyList"><div class="empty-state">Noch kein Training eingetragen.</div></div>
       </div>
+
     </div>
     <div class="col-right">
+
+      <!-- Calendar -->
       <div class="card">
         <div class="card-title">Kalender</div>
         <div class="cal-header">
@@ -134,174 +181,212 @@ input[type=number]:focus{border-color:var(--accent);}
         <div class="cal-grid" id="calGrid"></div>
         <div style="margin-top:10px;font-size:12px;color:var(--muted);" id="calHint">Tag anklicken um Training zuzuordnen.</div>
       </div>
+
+      <!-- Next session -->
       <div class="card">
         <div class="card-title">Nächste Einheit</div>
         <div id="nextSessionBox"></div>
       </div>
-      <div class="card">
-        <div class="card-title">Neues Max eintragen</div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Hast du heute mehr geschafft als bisher?</div>
-        <div class="max-row">
-          <input type="number" id="newMaxInput" min="1" max="30" placeholder="z.B. 10"/>
-          <button class="btn-accent" onclick="logNewMax()">Speichern</button>
-        </div>
-      </div>
+
     </div>
   </div>
 </div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<!-- Popup -->
+<div class="popup-overlay" id="popupOverlay" onclick="closePopup(event)">
+  <div class="popup">
+    <h3 id="popupDate"></h3>
+    <p id="popupSession"></p>
+    <div class="sets-summary" id="popupSets"></div>
+    <p id="popupTotal" style="font-size:12px;color:var(--accent);margin-top:4px;"></p>
+    <button class="btn-accent popup-close" onclick="closePopupDirect()">Schließen</button>
+  </div>
+</div>
+
 <script>
-let state = JSON.parse(localStorage.getItem('kstate3') || 'null') || {currentMax:8,sessions:[],sessionCount:0};
+let state = JSON.parse(localStorage.getItem('kstate4') || 'null') || {
+  currentMax: 8, goal: 20, sessions: [], sessionCount: 0
+};
+
 let calYear = new Date().getFullYear();
 let calMon = new Date().getMonth();
 let selectedDate = null;
 let swInterval = null, swSeconds = 0, swRunning = false;
 let completedSets = [], currentSetIndex = 0, setsForSession = [];
-let chartInstance = null;
 
-function save(){localStorage.setItem('kstate3',JSON.stringify(state));}
+function save(){ localStorage.setItem('kstate4', JSON.stringify(state)); }
 
-function getSets(n,max){
-  const base=Math.floor(max/2),high=base+1,s=[];
-  for(let i=0;i<10;i++) s.push(i<n?high:base);
+function getSets(n, max){
+  const base = Math.floor(max/2), high = base+1, s = [];
+  for(let i=0;i<10;i++) s.push(i<n ? high : base);
   return s;
 }
 
 function render(){
-  document.getElementById('maxDisplay').textContent=state.currentMax;
-  document.getElementById('maxInput').value=state.currentMax;
-  const pct=Math.min(Math.round((state.currentMax/20)*100),100);
-  document.getElementById('progressBar').style.width=pct+'%';
-  document.getElementById('progressText').textContent=state.currentMax+' / 20 Klimmzüge ('+pct+'%)';
-  const n=state.sessionCount%10;
-  setsForSession=getSets(n,state.currentMax);
-  completedSets=new Array(10).fill(false);
-  currentSetIndex=0;
-  const base=Math.floor(state.currentMax/2);
-  document.getElementById('sessionLabel').textContent='Session '+(state.sessions.length+1);
-  document.getElementById('planInfo').textContent=n+'x '+(base+1)+' + '+(10-n)+'x '+base+' Wdh.';
-  renderSets(); renderCal(); renderHistory(); renderNext(); renderStreak(); renderChart();
+  const goal = state.goal || 20;
+  document.getElementById('maxDisplay').textContent = state.currentMax;
+  document.getElementById('maxInput').value = state.currentMax;
+  document.getElementById('goalInput').value = goal;
+  document.querySelectorAll('#goalDisplay,#goalDisplay2').forEach(el => el.textContent = goal);
+  const pct = Math.min(Math.round((state.currentMax / goal) * 100), 100);
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('progressText').textContent = state.currentMax + ' / ' + goal + ' Klimmzüge (' + pct + '%)';
+
+  const n = state.sessionCount % 10;
+  setsForSession = getSets(n, state.currentMax);
+  completedSets = new Array(10).fill(false);
+  currentSetIndex = 0;
+  document.getElementById('pickNextPrompt').style.display = 'none';
+
+  const base = Math.floor(state.currentMax / 2);
+  document.getElementById('sessionLabel').textContent = 'Session ' + (state.sessions.length + 1);
+  document.getElementById('planInfo').textContent = n + 'x ' + (base+1) + ' + ' + (10-n) + 'x ' + base + ' Wdh.';
+
+  renderSets(); renderCal(); renderHistory(); renderNext(); renderStreak();
 }
 
 function renderSets(){
-  const grid=document.getElementById('setsGrid');
-  grid.innerHTML='';
-  setsForSession.forEach((reps,i)=>{
-    const btn=document.createElement('div');
-    btn.className='set-btn'+(completedSets[i]?' done':(i===currentSetIndex?' active':''));
-    btn.innerHTML='<div class="sl">Satz '+(i+1)+'</div><div class="sr">'+reps+'x</div>';
-    btn.onclick=()=>completeSet(i);
+  const grid = document.getElementById('setsGrid');
+  grid.innerHTML = '';
+  setsForSession.forEach((reps, i) => {
+    const btn = document.createElement('div');
+    btn.className = 'set-btn' + (completedSets[i] ? ' done' : (i === currentSetIndex ? ' active' : ''));
+    btn.innerHTML = '<div class="sl">Satz '+(i+1)+'</div><div class="sr">'+reps+'x</div>';
+    btn.onclick = () => completeSet(i);
     grid.appendChild(btn);
   });
 }
 
 function completeSet(i){
-  if(i!==currentSetIndex)return;
-  completedSets[i]=true; currentSetIndex=i+1;
+  if(i !== currentSetIndex) return;
+  completedSets[i] = true; currentSetIndex = i+1;
   resetSW(); renderSets();
-  if(currentSetIndex>=10)finishSession();
+  if(currentSetIndex >= 10) finishSession();
 }
 
 function finishSession(){
-  const dateStr=selectedDate||todayStr();
-  state.sessionCount++; 
-  state.sessions.push({date:dateStr,sets:[...setsForSession],max:state.currentMax});
-  save(); render();
-  document.getElementById('calHint').textContent='Training gespeichert: '+formatDate(dateStr);
+  const dateStr = selectedDate || todayStr();
+  state.sessionCount++;
+  state.sessions.push({ date: dateStr, sets: [...setsForSession], max: state.currentMax });
+  save();
+  document.getElementById('pickNextPrompt').style.display = 'block';
+  document.getElementById('calHint').textContent = '✓ Training gespeichert! Wähle deinen nächsten Tag.';
+  renderCal(); renderHistory(); renderNext(); renderStreak();
 }
 
+// Stopwatch
 function toggleSW(){
   if(swRunning){
-    clearInterval(swInterval); swRunning=false;
-    document.getElementById('swBtn').textContent='Weiter';
+    clearInterval(swInterval); swRunning = false;
+    document.getElementById('swBtn').textContent = 'Weiter';
   } else {
-    swRunning=true; document.getElementById('swBtn').textContent='Stop';
-    swInterval=setInterval(()=>{swSeconds++;updateSW();},1000);
+    swRunning = true; document.getElementById('swBtn').textContent = 'Stop';
+    swInterval = setInterval(() => { swSeconds++; updateSW(); }, 1000);
   }
 }
-function resetSW(){clearInterval(swInterval);swRunning=false;swSeconds=0;updateSW();document.getElementById('swBtn').textContent='Start';}
-function updateSW(){const m=Math.floor(swSeconds/60),s=swSeconds%60;document.getElementById('swDisplay').textContent=m+':'+(s<10?'0':'')+s;}
+function resetSW(){ clearInterval(swInterval); swRunning = false; swSeconds = 0; updateSW(); document.getElementById('swBtn').textContent = 'Start'; }
+function updateSW(){ const m = Math.floor(swSeconds/60), s = swSeconds%60; document.getElementById('swDisplay').textContent = m+':'+(s<10?'0':'')+s; }
 
-const DE_DAYS=['Mo','Di','Mi','Do','Fr','Sa','So'];
-const DE_MONTHS=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+// Calendar
+const DE_DAYS = ['Mo','Di','Mi','Do','Fr','Sa','So'];
+const DE_MONTHS = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
 
 function renderCal(){
-  document.getElementById('calMonth').textContent=DE_MONTHS[calMon]+' '+calYear;
-  const grid=document.getElementById('calGrid');
-  grid.innerHTML='';
-  DE_DAYS.forEach(d=>{const el=document.createElement('div');el.className='cal-day-label';el.textContent=d;grid.appendChild(el);});
-  const firstDay=new Date(calYear,calMon,1).getDay();
-  const offset=(firstDay+6)%7;
-  const dim=new Date(calYear,calMon+1,0).getDate();
-  const today=todayStr();
-  const sdates=new Set(state.sessions.map(s=>s.date));
-  for(let i=0;i<offset;i++){const el=document.createElement('div');el.className='cal-day empty';grid.appendChild(el);}
+  document.getElementById('calMonth').textContent = DE_MONTHS[calMon] + ' ' + calYear;
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+  DE_DAYS.forEach(d => { const el = document.createElement('div'); el.className = 'cal-day-label'; el.textContent = d; grid.appendChild(el); });
+  const firstDay = new Date(calYear, calMon, 1).getDay();
+  const offset = (firstDay + 6) % 7;
+  const dim = new Date(calYear, calMon+1, 0).getDate();
+  const today = todayStr();
+  const sessionMap = {};
+  state.sessions.forEach(s => { sessionMap[s.date] = s; });
+
+  for(let i=0;i<offset;i++){ const el=document.createElement('div'); el.className='cal-day empty'; grid.appendChild(el); }
   for(let d=1;d<=dim;d++){
-    const ds=calYear+'-'+String(calMon+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-    const el=document.createElement('div');
-    let cls='cal-day';
-    if(sdates.has(ds))cls+=' has-session';
-    if(ds===today)cls+=' today';
-    if(ds===selectedDate)cls+=' selected';
-    el.className=cls; el.textContent=d;
-    el.onclick=()=>selectDate(ds);
+    const ds = calYear+'-'+String(calMon+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const el = document.createElement('div');
+    let cls = 'cal-day';
+    if(sessionMap[ds]) cls += ' has-session';
+    if(ds === today) cls += ' today';
+    if(ds === selectedDate) cls += ' selected';
+    el.className = cls; el.textContent = d;
+    el.onclick = () => {
+      if(sessionMap[ds]) { showPopup(ds, sessionMap[ds]); }
+      else { selectDate(ds); }
+    };
     grid.appendChild(el);
   }
 }
-function selectDate(ds){selectedDate=ds;document.getElementById('calHint').textContent='Ausgewählt: '+formatDate(ds);renderCal();}
-function prevMonth(){calMon--;if(calMon<0){calMon=11;calYear--;}renderCal();}
-function nextMonth(){calMon++;if(calMon>11){calMon=0;calYear++;}renderCal();}
 
+function selectDate(ds){
+  selectedDate = ds;
+  document.getElementById('calHint').textContent = 'Ausgewählt: ' + formatDate(ds) + ' — Training starten.';
+  renderCal();
+}
+
+function prevMonth(){ calMon--; if(calMon<0){calMon=11;calYear--;} renderCal(); }
+function nextMonth(){ calMon++; if(calMon>11){calMon=0;calYear++;} renderCal(); }
+
+// Popup for past sessions
+function showPopup(ds, session){
+  document.getElementById('popupDate').textContent = formatDate(ds);
+  document.getElementById('popupSession').textContent = 'Max damals: ' + session.max + ' Klimmzüge';
+  const total = session.sets.reduce((a,b) => a+b, 0);
+  document.getElementById('popupSets').textContent = session.sets.map((r,i) => 'Satz '+(i+1)+': '+r+' Wdh.').join('\n');
+  document.getElementById('popupTotal').textContent = 'Gesamt: ' + total + ' Klimmzüge';
+  document.getElementById('popupOverlay').classList.add('show');
+}
+function closePopup(e){ if(e.target === document.getElementById('popupOverlay')) closePopupDirect(); }
+function closePopupDirect(){ document.getElementById('popupOverlay').classList.remove('show'); }
+
+// Next session
 function renderNext(){
-  const box=document.getElementById('nextSessionBox');
-  if(state.sessions.length===0){box.innerHTML='<div class="next-box"><div class="next-title">Nächstes Training</div><div class="next-date">Heute starten!</div><div class="next-sub">Leg jetzt los mit Session 1.</div></div>';return;}
-  const last=new Date(state.sessions[state.sessions.length-1].date);
-  const next=new Date(last); next.setDate(next.getDate()+2);
-  const today=new Date(); today.setHours(0,0,0,0);
-  const diff=Math.round((next-today)/86400000);
-  let label,sub;
-  if(diff<=0){label='Bereit!';sub='Genug pausiert — los geht\'s!';}
-  else if(diff===1){label='Morgen';sub='Noch 1 Tag Ruhe, dann bist du fit.';}
-  else{label=formatDate(next.toISOString().split('T')[0]);sub='Noch '+diff+' Tage Ruhe für optimale Regeneration.';}
-  box.innerHTML='<div class="next-box"><div class="next-title">Empfohlenes Training</div><div class="next-date">'+label+'</div><div class="next-sub">'+sub+'</div></div>';
+  const box = document.getElementById('nextSessionBox');
+  if(state.sessions.length === 0){
+    box.innerHTML = '<div class="next-box ready"><div class="next-title">Nächstes Training</div><div class="next-date">Heute starten!</div><div class="next-sub">Leg jetzt los mit Session 1.</div></div>';
+    return;
+  }
+  const last = new Date(state.sessions[state.sessions.length-1].date);
+  const next = new Date(last); next.setDate(next.getDate()+2);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diff = Math.round((next - today) / 86400000);
+  let label, sub, cls;
+  if(diff <= 0){ label = 'Bereit!'; sub = 'Genug pausiert — los geht\'s!'; cls = 'ready'; }
+  else if(diff === 1){ label = 'Morgen'; sub = 'Noch 1 Tag Ruhe, dann bist du fit.'; cls = 'wait'; }
+  else { label = formatDate(next.toISOString().split('T')[0]); sub = 'Noch '+diff+' Tage Ruhe für optimale Regeneration.'; cls = 'wait'; }
+  box.innerHTML = '<div class="next-box '+cls+'"><div class="next-title">Empfohlenes Training</div><div class="next-date">'+label+'</div><div class="next-sub">'+sub+'</div></div>';
 }
 
 function renderStreak(){
-  if(state.sessions.length===0){document.getElementById('streakBadge').textContent='0 Wochen';return;}
-  const weeks=new Set(state.sessions.map(s=>{
-    const d=new Date(s.date),soy=new Date(d.getFullYear(),0,1);
+  if(state.sessions.length === 0){ document.getElementById('streakBadge').textContent = '0 Wochen'; return; }
+  const weeks = new Set(state.sessions.map(s => {
+    const d = new Date(s.date), soy = new Date(d.getFullYear(),0,1);
     return d.getFullYear()+'-W'+Math.ceil(((d-soy)/86400000+soy.getDay()+1)/7);
   }));
-  document.getElementById('streakBadge').textContent='🔥 '+weeks.size+' Woche'+(weeks.size!==1?'n':'');
+  document.getElementById('streakBadge').textContent = '🔥 '+weeks.size+' Woche'+(weeks.size!==1?'n':'');
 }
 
 function renderHistory(){
-  const list=document.getElementById('historyList');
-  if(state.sessions.length===0){list.innerHTML='<div class="empty-state">Noch kein Training eingetragen.</div>';return;}
-  list.innerHTML=[...state.sessions].reverse().slice(0,12).map(s=>
-    '<div class="history-item"><span>'+formatDate(s.date)+(s.note?'<span class="badge">'+s.note+'</span>':'')+'</span><span class="history-reps">'+(s.sets.length>0?s.sets.join('-')+' Wdh.':'Max: '+s.max)+'</span></div>'
-  ).join('');
+  const list = document.getElementById('historyList');
+  if(state.sessions.length === 0){ list.innerHTML = '<div class="empty-state">Noch kein Training eingetragen.</div>'; return; }
+  list.innerHTML = [...state.sessions].reverse().slice(0,15).map(s => {
+    const total = s.sets.reduce((a,b)=>a+b,0);
+    return '<div class="history-item"><span>'+formatDate(s.date)+(s.note?'<span class="badge">'+s.note+'</span>':'')+'</span><span class="history-reps">'+(s.sets.length>0 ? total+' Wdh. total' : 'Max: '+s.max)+'</span></div>';
+  }).join('');
 }
 
-function renderChart(){
-  const ctx=document.getElementById('progressChart').getContext('2d');
-  const data=state.sessions.filter(s=>s.max).map(s=>({x:s.date,y:s.max}));
-  if(data.length<2){ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height);ctx.fillStyle='#444';ctx.font='12px DM Sans';ctx.fillText('Mehr Trainings nötig für den Graphen.',10,44);return;}
-  if(chartInstance)chartInstance.destroy();
-  chartInstance=new Chart(ctx,{type:'line',data:{labels:data.map(d=>d.x),datasets:[{data:data.map(d=>d.y),borderColor:'#c8f060',borderWidth:2,pointBackgroundColor:'#c8f060',pointRadius:4,tension:0.3,fill:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{display:false},y:{grid:{color:'#2a2a2a'},ticks:{color:'#666',font:{size:11}},min:0,max:22}}}});
+function updateGoals(){
+  const max = parseInt(document.getElementById('maxInput').value);
+  const goal = parseInt(document.getElementById('goalInput').value);
+  if(!max||max<1||!goal||goal<1) return;
+  state.currentMax = max; state.goal = goal;
+  save(); render();
 }
 
-function todayStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-function formatDate(str){if(!str)return'';const[y,m,d]=str.split('-');return d+'.'+m+'.'+y;}
-
-function updateMax(){const val=parseInt(document.getElementById('maxInput').value);if(!val||val<1)return;state.currentMax=val;save();render();}
-function logNewMax(){
-  const val=parseInt(document.getElementById('newMaxInput').value);
-  if(!val||val<=state.currentMax){alert('Bitte eine Zahl größer als dein aktuelles Max eingeben.');return;}
-  state.currentMax=val;
-  state.sessions.push({date:selectedDate||todayStr(),sets:[],max:val,note:'Neues Max!'});
-  save();render();document.getElementById('newMaxInput').value='';
-}
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function formatDate(str){ if(!str)return''; const[y,m,d]=str.split('-'); return d+'.'+m+'.'+y; }
 
 render();
 </script>
