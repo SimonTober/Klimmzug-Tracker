@@ -110,6 +110,14 @@ button:active{transform:scale(0.97);}
 .popup .sets-summary{font-family:'DM Mono',monospace;font-size:12px;color:var(--text);margin:10px 0;line-height:1.8;}
 .popup-close{margin-top:1rem;width:100%;}
 
+.feel{display:flex;gap:6px;margin:8px 0;}
+.feel button{flex:1;font-size:18px;padding:6px 0;}
+.feel button.on{border-color:var(--accent);background:#1c2a00;}
+input[type=text]{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface2);color:var(--text);outline:none;}
+input[type=text]:focus{border-color:var(--accent);}
+.hint{font-size:11px;color:var(--muted);margin-top:6px;}
+.history-note{display:block;font-size:11px;color:var(--muted);margin-top:2px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mini{padding:0 6px;margin-left:6px;font-size:11px;line-height:18px;border-radius:6px;}
 .chart{width:100%;height:auto;display:block;}
 .chart text{font-family:'DM Mono',monospace;font-size:8px;fill:#666;}
 .forecast{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5;}
@@ -161,6 +169,12 @@ button:focus-visible,input:focus-visible,.cal-day:focus-visible{outline:2px soli
           <input type="number" id="goalInput" value="20" min="1" max="100"/>
           <button class="btn-accent" onclick="updateGoals()">Aktualisieren</button>
         </div>
+        <div class="goal-edit-row">
+          <label>Max-Test heute:</label>
+          <input type="number" id="testInput" min="1" max="100" placeholder="Wdh."/>
+          <button onclick="saveTest()">Test speichern</button>
+        </div>
+        <div class="hint">Maximum an sauberen Klimmzügen in einem Satz, ausgeruht getestet. Wird im Verlauf festgehalten und setzt dein Max.</div>
       </div>
 
       <!-- Verlauf-Diagramm -->
@@ -180,6 +194,8 @@ button:focus-visible,input:focus-visible,.cal-day:focus-visible{outline:2px soli
         <!-- After session prompt -->
         <div class="pick-next" id="pickNextPrompt">
           <p id="pickNextText"></p>
+          <div class="feel" id="feelRow" role="group" aria-label="Wie fühlte sich die Einheit an?"></div>
+          <input type="text" id="noteInput" maxlength="200" placeholder="Notiz, z. B. Griff, Müdigkeit, Schlaf …" oninput="saveNote()"/>
           <button class="btn-accent" onclick="render()">Nächste Einheit vorbereiten</button>
         </div>
 
@@ -238,6 +254,7 @@ button:focus-visible,input:focus-visible,.cal-day:focus-visible{outline:2px soli
     <p id="popupSession"></p>
     <div class="sets-summary" id="popupSets"></div>
     <p id="popupTotal" style="font-size:12px;color:var(--accent);margin-top:4px;"></p>
+    <p id="popupNote" style="font-size:12px;color:var(--text);margin-top:6px;"></p>
     <button class="btn-accent popup-close" onclick="closePopupDirect()">Schließen</button>
   </div>
 </div>
@@ -247,7 +264,7 @@ const STORE_KEY = 'kstate4';
 const DEADLINE = new Date(2026, 11, 31);
 
 function loadState(){
-  const fresh = { currentMax: 8, goal: 20, sessions: [], sessionCount: 0, doneSets: 0 };
+  const fresh = { currentMax: 8, goal: 20, sessions: [], sessionCount: 0, doneSets: 0, tests: [] };
   try {
     const s = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
     if (s && Array.isArray(s.sessions)) return Object.assign(fresh, s);
@@ -261,7 +278,11 @@ let calMon = new Date().getMonth();
 let selectedDate = null;
 let swInterval = null, swBase = 0, swStart = 0, swRunning = false;
 let completedSets = [], currentSetIndex = 0, setsForSession = [];
-let sessionFinished = false, wakeLock = null;
+let sessionFinished = false, wakeLock = null, lastSession = null;
+const FEELS = ['😫','😕','😐','🙂','💪'];
+const FEEL_TXT = ['sehr schwer','schwer','okay','gut','stark'];
+function esc(t){ return String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function sortByDate(a){ a.sort((x,y) => x.date < y.date ? -1 : x.date > y.date ? 1 : 0); }
 
 function save(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e) {} }
 
@@ -295,7 +316,7 @@ function render(){
   const done = Math.min(Math.max(parseInt(state.doneSets) || 0, 0), 9);
   completedSets = setsForSession.map((_, i) => i < done);
   currentSetIndex = done;
-  sessionFinished = false;
+  sessionFinished = false; lastSession = null;
   document.getElementById('pickNextPrompt').style.display = 'none';
   document.getElementById('calHint').textContent = 'Tag anklicken um Training zuzuordnen.';
 
@@ -344,8 +365,9 @@ function undoSet(){
 function finishSession(){
   const dateStr = selectedDate || todayStr();
   state.sessionCount++;
-  state.sessions.push({ date: dateStr, sets: [...setsForSession], max: state.currentMax });
-  state.sessions.sort((a,b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+  lastSession = { date: dateStr, sets: [...setsForSession], max: state.currentMax };
+  state.sessions.push(lastSession);
+  sortByDate(state.sessions);
   state.doneSets = 0;
   selectedDate = null;
   sessionFinished = true;
@@ -353,11 +375,53 @@ function finishSession(){
 
   const cycleDone = state.sessionCount % 10 === 0;
   document.getElementById('pickNextText').textContent = cycleDone
-    ? '✓ Einheit gespeichert – Zyklus komplett (10 Einheiten)! Teste jetzt dein neues Max und trage es oben ein.'
+    ? '✓ Einheit gespeichert – Zyklus komplett (10 Einheiten)! Mach jetzt einen Max-Test und trag ihn im Feld „Max-Test“ ein.'
     : '✓ Einheit gespeichert! Empfehlung: mindestens 2 Tage Pause.';
+  renderFeel();
+  document.getElementById('noteInput').value = '';
   document.getElementById('pickNextPrompt').style.display = 'block';
   document.getElementById('calHint').textContent = '✓ Training gespeichert!';
   renderSets(); renderCal(); renderHistory(); renderNext(); renderStreak(); renderStats(); renderChart();
+}
+
+// ---- Gefühl & Notiz zur gerade beendeten Einheit ----
+function renderFeel(){
+  const row = document.getElementById('feelRow');
+  row.innerHTML = '';
+  FEELS.forEach((e, i) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = e;
+    b.setAttribute('aria-label', FEEL_TXT[i]);
+    b.className = lastSession && lastSession.feel === i+1 ? 'on' : '';
+    b.onclick = () => { if(!lastSession) return; lastSession.feel = lastSession.feel === i+1 ? undefined : i+1; save(); renderFeel(); renderHistory(); };
+    row.appendChild(b);
+  });
+}
+function saveNote(){
+  if(!lastSession) return;
+  const v = document.getElementById('noteInput').value.trim();
+  if(v) lastSession.note = v; else delete lastSession.note;
+  save(); renderHistory();
+}
+
+// ---- Max-Test ----
+function saveTest(){
+  const inp = document.getElementById('testInput');
+  const v = parseInt(inp.value);
+  if(!v || v < 1 || v > 100){ inp.focus(); return; }
+  state.tests = state.tests || [];
+  state.tests.push({ date: todayStr(), max: v });
+  sortByDate(state.tests);
+  if(v !== state.currentMax) state.doneSets = 0;   // neuer Plan
+  state.currentMax = v;
+  inp.value = '';
+  save(); resetSW(); render();
+}
+function deleteTest(i){
+  const t = state.tests[i];
+  if(!t || !confirm('Max-Test vom '+formatDate(t.date)+' ('+t.max+') löschen? Dein aktuelles Max bleibt unverändert.')) return;
+  state.tests.splice(i, 1);
+  save(); render();
 }
 
 // ---- Stoppuhr (zeitstempelbasiert, läuft auch bei gedrosseltem Tab korrekt) ----
@@ -439,6 +503,10 @@ function showPopup(ds, session){
   const total = session.sets.reduce((a,b) => a+b, 0);
   document.getElementById('popupSets').textContent = session.sets.map((r,i) => 'Satz '+(i+1)+': '+r+' Wdh.').join('\n');
   document.getElementById('popupTotal').textContent = 'Gesamt: ' + total + ' Klimmzüge';
+  document.getElementById('popupNote').textContent =
+    (session.feel ? 'Gefühl: ' + FEELS[session.feel-1] + ' ' + FEEL_TXT[session.feel-1] : '') +
+    (session.feel && session.note ? '\n' : '') + (session.note ? 'Notiz: ' + session.note : '');
+  document.getElementById('popupNote').style.whiteSpace = 'pre-line';
   document.getElementById('popupOverlay').classList.add('show');
 }
 function closePopup(e){ if(e.target === document.getElementById('popupOverlay')) closePopupDirect(); }
@@ -486,16 +554,18 @@ function renderStats(){
 
 // ---- Max-Verlauf + Prognose ----
 function maxPoints(){
-  const pts = state.sessions.map(s => ({ t: parseDate(s.date).getTime(), v: s.max }));
+  const pts = state.sessions.map(s => ({ t: parseDate(s.date).getTime(), v: s.max }))
+    .concat((state.tests || []).map(x => ({ t: parseDate(x.date).getTime(), v: x.max, test: true })))
+    .sort((a, b) => a.t - b.t);
   const todayT = parseDate(todayStr()).getTime();
-  if(!pts.length || pts[pts.length-1].v !== state.currentMax) pts.push({ t: todayT, v: state.currentMax });
+  if(!pts.length || pts[pts.length-1].v !== state.currentMax) pts.push({ t: todayT, v: state.currentMax, today: true });
   return pts;
 }
 function renderChart(){
   const box = document.getElementById('chartBox'), fc = document.getElementById('forecast');
   const pts = maxPoints(), goal = state.goal || 20;
-  if(state.sessions.length < 2){
-    box.innerHTML = '<div class="empty-state">Nach zwei Einheiten siehst du hier deinen Verlauf.</div>';
+  if(state.sessions.length + (state.tests || []).length < 2){
+    box.innerHTML = '<div class="empty-state">Nach zwei Einheiten oder Max-Tests siehst du hier deinen Verlauf.</div>';
     fc.textContent = ''; return;
   }
   const W = 300, H = 130, L = 22, R = 8, T = 8, B = 18;
@@ -504,7 +574,9 @@ function renderChart(){
   const x = t => L + (t - t0) / (t1 - t0) * (W - L - R);
   const y = v => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
   const line = pts.map((p,i) => (i ? 'L' : 'M') + x(p.t).toFixed(1) + ' ' + y(p.v).toFixed(1)).join(' ');
-  const dots = pts.map(p => '<circle cx="'+x(p.t).toFixed(1)+'" cy="'+y(p.v).toFixed(1)+'" r="2.5" fill="#c8f060"/>').join('');
+  const dots = pts.map(p => p.test
+    ? '<circle cx="'+x(p.t).toFixed(1)+'" cy="'+y(p.v).toFixed(1)+'" r="4" fill="#0f0f0f" stroke="#f0ede8" stroke-width="1.5"/>'
+    : '<circle cx="'+x(p.t).toFixed(1)+'" cy="'+y(p.v).toFixed(1)+'" r="2.5" fill="#c8f060"/>').join('');
   const fmt = t => { const d = new Date(t); return pad(d.getDate())+'.'+pad(d.getMonth()+1)+'.'; };
   box.innerHTML = '<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Verlauf deines Maximums">'
     + '<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(goal)+'" y2="'+y(goal)+'" stroke="#8aaa30" stroke-dasharray="3 3"/>'
@@ -512,6 +584,7 @@ function renderChart(){
     + '<text x="'+(L-3)+'" y="'+(y(lo)+3)+'" text-anchor="end">'+lo+'</text>'
     + '<path d="'+line+'" fill="none" stroke="#c8f060" stroke-width="1.5"/>'+dots
     + '<text x="'+L+'" y="'+(H-4)+'">'+fmt(t0)+'</text>'
+    + '<text x="'+(W/2)+'" y="'+(H-4)+'" text-anchor="middle" style="fill:#8a8a8a">○ Max-Test · ● Einheit</text>'
     + '<text x="'+(W-R)+'" y="'+(H-4)+'" text-anchor="end">'+fmt(t1)+'</text></svg>';
 
   // Prognose per linearer Regression (nur mit ≥ 14 Tagen Datenbasis aussagekräftig)
@@ -538,10 +611,20 @@ function renderChart(){
 
 function renderHistory(){
   const list = document.getElementById('historyList');
-  if(state.sessions.length === 0){ list.innerHTML = '<div class="empty-state">Noch kein Training eingetragen.</div>'; return; }
-  list.innerHTML = [...state.sessions].reverse().slice(0,15).map(s => {
-    const total = s.sets.reduce((a,b)=>a+b,0);
-    return '<div class="history-item"><span>'+formatDate(s.date)+'</span><span class="history-reps">'+(s.sets.length>0 ? total+' Wdh. total · Max '+s.max : 'Max: '+s.max)+'</span></div>';
+  const items = state.sessions.map(x => ({ kind: 's', x }))
+    .concat((state.tests || []).map((x, i) => ({ kind: 't', x, i })));
+  if(items.length === 0){ list.innerHTML = '<div class="empty-state">Noch kein Training eingetragen.</div>'; return; }
+  items.sort((a, b) => a.x.date < b.x.date ? 1 : a.x.date > b.x.date ? -1 : (a.kind === 't' ? -1 : 1));
+  list.innerHTML = items.slice(0, 15).map(it => {
+    const s = it.x;
+    if(it.kind === 't'){
+      return '<div class="history-item"><span>'+formatDate(s.date)+'<span class="badge">Max-Test</span></span>'
+        + '<span class="history-reps">Max: '+s.max+'<button class="mini" aria-label="Max-Test löschen" onclick="deleteTest('+it.i+')">✕</button></span></div>';
+    }
+    const total = s.sets.reduce((a,b) => a+b, 0);
+    const extra = (s.feel ? FEELS[s.feel-1] + ' ' : '') + (s.note ? esc(s.note) : '');
+    return '<div class="history-item"><span>'+formatDate(s.date)+(extra ? '<span class="history-note">'+extra+'</span>' : '')+'</span>'
+      + '<span class="history-reps">'+total+' Wdh. total · Max '+s.max+'</span></div>';
   }).join('');
 }
 
@@ -583,11 +666,12 @@ function importData(e){
       const ok = d && Array.isArray(d.sessions)
         && Number.isInteger(d.currentMax) && d.currentMax > 0
         && Number.isInteger(d.goal) && d.goal > 0
+        && (d.tests === undefined || (Array.isArray(d.tests) && d.tests.every(t => /^\d{4}-\d{2}-\d{2}$/.test(t.date) && Number.isFinite(t.max))))
         && d.sessions.every(s => /^\d{4}-\d{2}-\d{2}$/.test(s.date) && Array.isArray(s.sets) && s.sets.every(Number.isFinite) && Number.isFinite(s.max));
       if(!ok) throw new Error('format');
       if(!confirm('Aktuelle Daten durch das Backup ersetzen?')) return;
-      state = Object.assign({ sessionCount: d.sessions.length, doneSets: 0 }, d);
-      state.sessions.sort((a,b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+      state = Object.assign({ sessionCount: d.sessions.length, doneSets: 0, tests: [] }, d);
+      sortByDate(state.sessions); sortByDate(state.tests);
       state.doneSets = 0;
       save(); resetSW(); render();
     } catch(err) { alert('Diese Datei ist kein gültiges Klimmzug-Backup.'); }
