@@ -1,13 +1,13 @@
 {
   "name": "Klimmzug-Tracker",
   "short_name": "Klimmzüge",
-  "description": "Trainingsplan, Pausen-Stoppuhr und Fortschritt auf dem Weg zu 20 Klimmzügen.",
+  "description": "Klimmzug-Programm, 32 Übungen mit Video-Tutorials und interaktive Workouts – ohne Geräte.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0f0f0f",
-  "theme_color": "#0f0f0f",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
   "lang": "de",
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
