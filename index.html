@@ -4,6 +4,11 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta name="theme-color" content="#0f0f0f"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="apple-touch-icon" href="icon-180.png"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="Klimmzüge"/>
 <title>Klimmzug-Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
@@ -105,6 +110,10 @@ button:active{transform:scale(0.97);}
 .popup .sets-summary{font-family:'DM Mono',monospace;font-size:12px;color:var(--text);margin:10px 0;line-height:1.8;}
 .popup-close{margin-top:1rem;width:100%;}
 
+.chart{width:100%;height:auto;display:block;}
+.chart text{font-family:'DM Mono',monospace;font-size:8px;fill:#666;}
+.forecast{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5;}
+.forecast b{color:var(--accent);font-weight:500;}
 .set-btn{width:100%;font-family:inherit;}
 .set-btn span{display:block;}
 button:focus-visible,input:focus-visible,.cal-day:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
@@ -152,6 +161,13 @@ button:focus-visible,input:focus-visible,.cal-day:focus-visible{outline:2px soli
           <input type="number" id="goalInput" value="20" min="1" max="100"/>
           <button class="btn-accent" onclick="updateGoals()">Aktualisieren</button>
         </div>
+      </div>
+
+      <!-- Verlauf-Diagramm -->
+      <div class="card">
+        <div class="card-title">Max-Verlauf</div>
+        <div id="chartBox"></div>
+        <div class="forecast" id="forecast"></div>
       </div>
 
       <!-- Training -->
@@ -287,7 +303,7 @@ function render(){
   document.getElementById('sessionLabel').textContent = 'Session ' + (state.sessions.length + 1);
   document.getElementById('planInfo').textContent = n + 'x ' + (base+1) + ' + ' + (10-n) + 'x ' + base + ' Wdh.';
 
-  renderSets(); renderCal(); renderHistory(); renderNext(); renderStreak(); renderStats();
+  renderSets(); renderCal(); renderHistory(); renderNext(); renderStreak(); renderStats(); renderChart();
 }
 
 function renderSets(){
@@ -341,7 +357,7 @@ function finishSession(){
     : '✓ Einheit gespeichert! Empfehlung: mindestens 2 Tage Pause.';
   document.getElementById('pickNextPrompt').style.display = 'block';
   document.getElementById('calHint').textContent = '✓ Training gespeichert!';
-  renderSets(); renderCal(); renderHistory(); renderNext(); renderStreak(); renderStats();
+  renderSets(); renderCal(); renderHistory(); renderNext(); renderStreak(); renderStats(); renderChart();
 }
 
 // ---- Stoppuhr (zeitstempelbasiert, läuft auch bei gedrosseltem Tab korrekt) ----
@@ -468,6 +484,58 @@ function renderStats(){
   document.getElementById('statDays').textContent = days;
 }
 
+// ---- Max-Verlauf + Prognose ----
+function maxPoints(){
+  const pts = state.sessions.map(s => ({ t: parseDate(s.date).getTime(), v: s.max }));
+  const todayT = parseDate(todayStr()).getTime();
+  if(!pts.length || pts[pts.length-1].v !== state.currentMax) pts.push({ t: todayT, v: state.currentMax });
+  return pts;
+}
+function renderChart(){
+  const box = document.getElementById('chartBox'), fc = document.getElementById('forecast');
+  const pts = maxPoints(), goal = state.goal || 20;
+  if(state.sessions.length < 2){
+    box.innerHTML = '<div class="empty-state">Nach zwei Einheiten siehst du hier deinen Verlauf.</div>';
+    fc.textContent = ''; return;
+  }
+  const W = 300, H = 130, L = 22, R = 8, T = 8, B = 18;
+  const t0 = pts[0].t, t1 = Math.max(pts[pts.length-1].t, t0 + 86400000);
+  const lo = Math.max(0, Math.min(...pts.map(p => p.v)) - 1), hi = Math.max(goal, ...pts.map(p => p.v)) + 1;
+  const x = t => L + (t - t0) / (t1 - t0) * (W - L - R);
+  const y = v => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+  const line = pts.map((p,i) => (i ? 'L' : 'M') + x(p.t).toFixed(1) + ' ' + y(p.v).toFixed(1)).join(' ');
+  const dots = pts.map(p => '<circle cx="'+x(p.t).toFixed(1)+'" cy="'+y(p.v).toFixed(1)+'" r="2.5" fill="#c8f060"/>').join('');
+  const fmt = t => { const d = new Date(t); return pad(d.getDate())+'.'+pad(d.getMonth()+1)+'.'; };
+  box.innerHTML = '<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Verlauf deines Maximums">'
+    + '<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(goal)+'" y2="'+y(goal)+'" stroke="#8aaa30" stroke-dasharray="3 3"/>'
+    + '<text x="'+(L-3)+'" y="'+(y(goal)+3)+'" text-anchor="end">'+goal+'</text>'
+    + '<text x="'+(L-3)+'" y="'+(y(lo)+3)+'" text-anchor="end">'+lo+'</text>'
+    + '<path d="'+line+'" fill="none" stroke="#c8f060" stroke-width="1.5"/>'+dots
+    + '<text x="'+L+'" y="'+(H-4)+'">'+fmt(t0)+'</text>'
+    + '<text x="'+(W-R)+'" y="'+(H-4)+'" text-anchor="end">'+fmt(t1)+'</text></svg>';
+
+  // Prognose per linearer Regression (nur mit ≥ 14 Tagen Datenbasis aussagekräftig)
+  const days = (t1 - t0) / 86400000, left = Math.max(1, Math.round((DEADLINE - parseDate(todayStr())) / 86400000));
+  const need = goal - state.currentMax;
+  let txt = '';
+  if(need <= 0) txt = '<b>Ziel erreicht!</b> Zeit für ein neues Ziel.';
+  else {
+    txt = 'Bis Ende 2026 fehlen noch <b>'+need+'</b> Klimmzüge (≈ '+(need / left * 30).toFixed(1).replace('.',',')+' pro Monat nötig). ';
+    if(days >= 14){
+      const n = pts.length, mt = pts.reduce((a,p)=>a+(p.t-t0)/86400000,0)/n, mv = pts.reduce((a,p)=>a+p.v,0)/n;
+      let num = 0, den = 0;
+      pts.forEach(p => { const dx = (p.t-t0)/86400000 - mt; num += dx*(p.v-mv); den += dx*dx; });
+      const slope = den ? num/den : 0;   // Klimmzüge pro Tag
+      if(slope > 0){
+        const eta = new Date(parseDate(todayStr()).getTime() + (need / slope) * 86400000);
+        txt += 'Bei deinem Tempo erreichst du das Ziel ca. <b>'+formatDate(toStr(eta))+'</b>'
+          + (eta > DEADLINE ? ' – also nach dem Stichtag.' : ' – im Plan.');
+      } else txt += 'Dein Max stagniert bisher – trag es nach dem nächsten Test aktualisiert ein.';
+    } else txt += 'Eine Prognose gibt es nach 2 Wochen Training.';
+  }
+  fc.innerHTML = txt;
+}
+
 function renderHistory(){
   const list = document.getElementById('historyList');
   if(state.sessions.length === 0){ list.innerHTML = '<div class="empty-state">Noch kein Training eingetragen.</div>'; return; }
@@ -527,6 +595,9 @@ function importData(e){
   reader.readAsText(file);
 }
 
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
 render();
 </script>
 </body>
