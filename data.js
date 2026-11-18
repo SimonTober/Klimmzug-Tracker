@@ -229,12 +229,13 @@ const WORKOUTS = [
     steps: [['arm-circles', 30], ['cat-cow', 40], ['world-greatest-stretch', 40], ['hip-flexor-stretch', 40], ['lat-stretch', 30], ['hamstring-stretch', 40], ['childs-pose', 45]] },
 ];
 
-// YouTube-Tutorial pro Übung (aus Websuche recherchiert). Fehlt eines, verlinkt die App eine YouTube-Suche.
+// YouTube-Tutorial pro Übung. Alle IDs stammen aus Websuche-Ergebnissen und wurden per ID-Suche gegengeprüft (Titel passt zur Übung).
+// Fehlt eines oder lädt das Vorschaubild nicht, verlinkt die App eine YouTube-Suche.
 const VIDEOS = {
   "pullup": { id: "ui5rcJx-_hY", title: "How to Do a Proper Pull Up – Form, Fehler & Übungen", channel: "" },
   "chinup": { id: "dYDJpuDiJGc", title: "Chinups: Best Bodyweight Biceps Exercise (3 Steps)", channel: "ATHLEAN-X" },
   "wide-pullup": { id: "UVHlAloZX3I", title: "5 Steps to a Better Wide Grip Pull Up", channel: "" },
-  "negative-pullup": { id: "gbPURTSxQLY", title: "How To Do a Negative Pull-Up", channel: "" },
+  "negative-pullup": { id: "gbPURTSxQLY", title: "How To Do a Negative Pull-Up", channel: "Bodybuilding.com" },
   "dead-hang": { id: "g0I7Jv3oqKw", title: "How to Dead Hang Properly – Grip, Form & Progressions", channel: "" },
   "scapula-pullup": { id: "-ZIpSoTRsuE", title: "Scapular Pull Ups (Beginner to Advanced)", channel: "Zack Henderson" },
   "australian-row": { id: "dnpDUwqMX04", title: "Bodyweight Rows Tutorial (6 Variations)", channel: "" },
