@@ -159,12 +159,13 @@
     <div class="section"><h2>Daten</h2></div>
     <div class="card">
       <div class="row">
+        <button class="btn btn-lime" onclick="shareData()">Auf anderes Gerät übertragen</button>
         <button class="btn btn-ghost" onclick="exportData()">Backup exportieren</button>
         <button class="btn btn-ghost" onclick="document.getElementById('importFile').click()">Backup importieren</button>
         <button class="btn btn-danger" onclick="deleteLastSession()">Letzte Klimmzug-Einheit löschen</button>
       </div>
       <input type="file" id="importFile" accept="application/json,.json" hidden onchange="importData(event)"/>
-      <div class="hint">Deine Daten liegen nur auf diesem Gerät. Exportiere ab und zu ein Backup.</div>
+      <div class="hint">Deine Daten liegen nur auf diesem Gerät. Zum Wechseln zwischen iPhone und MacBook: „Übertragen“ tippen, per AirDrop senden und auf dem anderen Gerät „Backup importieren“ wählen.</div>
     </div>
   </main>
 </div>

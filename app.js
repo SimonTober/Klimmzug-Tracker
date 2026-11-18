@@ -302,7 +302,38 @@ function renderPlan(){
   const next = plan.find(it => !planItemDone(it, plan) && it.date >= today);
   html += '<div class="plan-foot"><span>'+GOALS[state.coach.goal].em+' '+GOALS[state.coach.goal].name+' · '+doneN+'/'+plan.length+' erledigt</span>'
     + (next ? '<span class="muted">'+(next.date === today ? 'Heute' : DE_DAYS[next.dow])+': '+esc(planName(next.wid))+'</span>' : '<span style="color:var(--lime)">Woche geschafft! 🎉</span>')+'</div>';
+  html += '<button class="btn btn-ghost btn-block" style="margin-top:12px;padding:11px;font-size:13px" onclick="exportPlanIcs()">'+icon('clock','s')+' Erinnerungen in den Kalender</button>';
   box.innerHTML = '<div class="card">'+html+'</div>';
+}
+
+// Erinnerungen: Wochenplan als wiederkehrende Kalendertermine mit Alarm (iPhone- und Mac-Kalender)
+function exportPlanIcs(){
+  const plan = weekPlan(); if(!plan.length){ openOnboarding(); return; }
+  const [hh, mm] = (state.settings.trainTime || '18:00').split(':').map(Number);
+  const BYDAY = ['MO','TU','WE','TH','FR','SA','SU'];
+  const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
+  const mon = parseDate(weekKey(new Date()));
+  const ev = plan.map((it, i) => {
+    let d = addDays(mon, it.dow);
+    if(toStr(d) < todayStr()) d = addDays(d, 7);   // keine Termine in der Vergangenheit anlegen
+    const dt = d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'T'+pad(hh)+pad(mm)+'00';
+    const w = it.wid === 'pullup' ? null : getWorkout(it.wid);
+    const dur = w ? Math.max(15, Math.round(estimateSec(w)/60) + (state.settings.warmup ? 3 : 0)) : 25;
+    const desc = (w ? w.desc : '10 Sätze Klimmzüge mit steigender Last.') + ' Öffne den Klimmzug-Tracker zum Starten.';
+    return ['BEGIN:VEVENT', 'UID:klimmzug-'+state.coach.goal+'-'+it.dow+'-'+i+'@klimmzug-tracker', 'DTSTAMP:'+stamp,
+      'DTSTART:'+dt, 'DURATION:PT'+dur+'M', 'RRULE:FREQ=WEEKLY;BYDAY='+BYDAY[it.dow],
+      'SUMMARY:💪 '+planName(it.wid), 'DESCRIPTION:'+desc.replace(/[,;]/g, m => '\\'+m),
+      'BEGIN:VALARM', 'TRIGGER:-PT15M', 'ACTION:DISPLAY', 'DESCRIPTION:Gleich: '+planName(it.wid), 'END:VALARM', 'END:VEVENT'].join('\r\n');
+  });
+  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Klimmzug-Tracker//DE', 'CALSCALE:GREGORIAN', 'X-WR-CALNAME:Training'].concat(ev, ['END:VCALENDAR']).join('\r\n');
+  downloadFile(new Blob([ics], { type: 'text/calendar' }), 'trainingsplan.ics');
+  toast('📅', 'Kalenderdatei erstellt', 'Öffnen und zum Kalender hinzufügen – mit Erinnerung 15 Min. vorher');
+}
+function downloadFile(blob, name){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1500);
 }
 
 let ob = null;
@@ -507,11 +538,37 @@ function renderLibrary(){
 function videoCard(id){
   const v = VIDEOS[id], e = exById(id);
   if(!v) return '<a class="video search-only" href="'+ytUrl(id)+'" target="_blank" rel="noopener"><div class="yt">'+YT_SVG+'</div><span>Tutorial auf YouTube suchen</span></a>';
-  return '<a class="video" href="'+ytUrl(id)+'" target="_blank" rel="noopener" aria-label="Video-Tutorial: '+esc(v.title)+'">'
+  // Tippen spielt das Video direkt in der App ab (datenschutzfreundliche youtube-nocookie-Einbettung)
+  return '<a class="video" href="'+ytUrl(id)+'" target="_blank" rel="noopener" aria-label="Video-Tutorial abspielen: '+esc(v.title)+'" onclick="return playInline(this,\''+e.id+'\')">'
     + '<img src="'+ytThumb(id)+'" alt="" onload="thumbCheck(this)" onerror="thumbFail(this,\''+e.id+'\')"/>'
     + '<div class="yt">'+YT_SVG+'</div>'
-    + '<div class="vinfo"><b>'+esc(v.title)+'</b><small>'+(v.channel ? esc(v.channel)+' · ' : '')+'Auf YouTube ansehen</small></div></a>';
+    + '<div class="vinfo"><b>'+esc(v.title)+'</b><small>'+(v.channel ? esc(v.channel)+' · ' : '')+'Tippen zum Abspielen</small></div></a>'
+    + '<a class="vlink" href="'+ytUrl(id)+'" target="_blank" rel="noopener" style="margin-top:0"><span class="yt-s">'+YT_SVG+'</span>In der YouTube-App öffnen</a>';
 }
+function embedUrl(id){ return 'https://www.youtube-nocookie.com/embed/'+VIDEOS[id].id+'?autoplay=1&rel=0&modestbranding=1&playsinline=1'; }
+function playInline(a, id){
+  if(a.classList.contains('search-only') || !VIDEOS[id]) return true;   // Fallback: normaler Link
+  const f = document.createElement('div');
+  f.className = 'video playing';
+  f.innerHTML = '<iframe src="'+embedUrl(id)+'" title="'+esc(VIDEOS[id].title)+'" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>';
+  a.replaceWith(f);
+  return false;
+}
+// Video im Workout-Player als Overlay (Workout pausiert automatisch)
+function playerVideo(id){
+  if(!P) return;
+  if(!P.paused) togglePause();
+  if(!VIDEOS[id]){ window.open(ytUrl(id), '_blank', 'noopener'); return; }
+  const o = document.createElement('div');
+  o.className = 'video-modal'; o.id = 'videoModal';
+  o.innerHTML = '<div class="vm-inner"><div class="row" style="justify-content:space-between;margin-bottom:10px"><b>'+esc(exById(id).name)+'</b>'
+    + '<button class="icon-btn" onclick="closePlayerVideo()" aria-label="Video schließen">'+icon('x')+'</button></div>'
+    + '<div class="video playing"><iframe src="'+embedUrl(id)+'" title="'+esc(VIDEOS[id].title)+'" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>'
+    + '<a class="vlink" href="'+ytUrl(id)+'" target="_blank" rel="noopener"><span class="yt-s">'+YT_SVG+'</span>In der YouTube-App öffnen</a>'
+    + '<button class="btn btn-lime btn-block" style="margin-top:12px" onclick="closePlayerVideo(true)">'+icon('play','f s')+' Weiter trainieren</button></div>';
+  $('player').appendChild(o);
+}
+function closePlayerVideo(resume){ const o = $('videoModal'); if(o) o.remove(); if(resume && P && P.paused) togglePause(); }
 
 function openExercise(id){
   const e = exById(id), c = CATEGORIES[e.cat];
@@ -963,6 +1020,7 @@ function openSettings(){
     + '<div class="field"><span>Dein Name</span><input type="text" maxlength="20" value="'+esc(s.name)+'" placeholder="optional" onchange="state.settings.name=this.value.trim();save();renderHome()" style="width:55%"/></div>'
     + (c ? '' : '<div class="field"><span>Wochenziel<br/><small class="muted">Trainingstage pro Woche</small></span><div class="stepper"><button onclick="setWeekly(-1)">−</button><b id="wgVal">'+s.weeklyGoal+'</b><button onclick="setWeekly(1)">+</button></div></div>')
     + '<div class="field"><span>Körpergewicht<br/><small class="muted">für die kcal-Schätzung</small></span><input type="number" min="30" max="200" value="'+s.weight+'" onchange="state.settings.weight=Math.min(200,Math.max(30,parseInt(this.value)||75));save()"/></div>'
+    + '<div class="field"><span>Trainingszeit<br/><small class="muted">für Kalender-Erinnerungen</small></span><input type="time" value="'+(s.trainTime || '18:00')+'" onchange="state.settings.trainTime=this.value||\'18:00\';save()" style="background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:9px 10px;color:var(--text);font:inherit"/></div>'
     + sw('warmup', 'Automatisch aufwärmen', '3 Minuten vor jedem Workout')
     + sw('sound', 'Töne', 'Countdown-Pieptöne im Workout')
     + sw('voice', 'Sprachansage', 'Sagt Übungen und Pausen an')
@@ -1112,7 +1170,7 @@ function drawPlayer(){
     + '<div class="p-phase">'+phase+'</div>'
     + '<div class="p-name">'+esc(name)+'</div>'
     + '<div class="p-ring" id="pRing">'+ringSVG(1, 7)+'<div class="center"><div class="num" id="pNum"></div><div class="unit">'+unit+'</div></div></div>'
-    + (s.kind === 'work' ? '<a class="vlink" href="'+ytUrl(s.ex)+'" target="_blank" rel="noopener" onclick="if(P&&!P.paused)togglePause()"><span class="yt-s">'+YT_SVG+'</span>Technik-Video ansehen</a>' : '')
+    + (s.kind === 'work' ? '<button class="vlink" onclick="playerVideo(\''+s.ex+'\')"><span class="yt-s">'+YT_SVG+'</span>Technik-Video ansehen</button>' : '')
     + nextHtml
     + '</div>'
     + '<div class="p-extra">'
@@ -1205,12 +1263,13 @@ function startCooldown(){ closePlayer(true); startWorkout('cooldown'); }
 document.addEventListener('keydown', e => {
   if(!P || P.summary || !$('player').classList.contains('show')) return;
   if(e.target.tagName === 'INPUT') return;
+  if($('videoModal') && e.key !== 'Escape') return;
   if(e.code === 'Space'){ e.preventDefault(); const s = seg(); if(s.kind === 'work' && !s.time) advance(1); else togglePause(); }
   else if(e.key === '+' || e.key === 'ArrowUp'){ e.preventDefault(); adjReps(1); }
   else if(e.key === '-' || e.key === 'ArrowDown'){ e.preventDefault(); adjReps(-1); }
   else if(e.key === 'ArrowRight') advance(1);
   else if(e.key === 'ArrowLeft') advance(-1);
-  else if(e.key === 'Escape') closePlayer();
+  else if(e.key === 'Escape'){ if($('videoModal')) closePlayerVideo(); else closePlayer(); }
 });
 
 // =====================================================================
@@ -1286,12 +1345,20 @@ function deleteLastSession(){
   save(); resetSW(); render();
 }
 function exportData(){
-  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'klimmzug-backup-'+todayStr()+'.json';
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  downloadFile(new Blob([JSON.stringify(state, null, 2)], {type:'application/json'}), 'klimmzug-backup-'+todayStr()+'.json');
+}
+// Daten aufs andere Gerät schicken (iPhone <-> Mac per AirDrop, Nachrichten, Mail …)
+async function shareData(){
+  const name = 'klimmzug-backup-'+todayStr()+'.json';
+  const file = new File([JSON.stringify(state)], name, { type: 'application/json' });
+  try {
+    if(navigator.canShare && navigator.canShare({ files: [file] })){
+      await navigator.share({ files: [file], title: 'Klimmzug-Tracker Daten', text: 'Auf dem anderen Gerät unter Fortschritt → Backup importieren öffnen.' });
+      return;
+    }
+  } catch(e) { if(e && e.name === 'AbortError') return; }
+  exportData();
+  toast('💾', 'Backup gespeichert', 'Auf dem anderen Gerät unter „Backup importieren“ öffnen');
 }
 function importData(e){
   const file = e.target.files[0]; e.target.value = '';

@@ -11,7 +11,9 @@ Läuft im Browser auf iPhone und Mac und lässt sich als App installieren (Safar
 - **10 fertige Workouts**, Aufwärmen und Cool-down + **eigene Workouts** zusammenstellen
 - **Interaktiver Workout-Player**: Countdown-Ring, automatische Pausen, Töne, deutsche Sprachansage, Display bleibt an, Wiederholungen anpassen, persönliche Bestleistungen, Tastatursteuerung am Mac (Leertaste, Pfeiltasten, +/-)
 - **Fortschritt**: Wochenziel, Aktivitäts-Balken, Kalender, Serie, kcal-Schätzung, 20 Erfolge
-- **Backup** als JSON-Datei – alle Daten bleiben auf dem Gerät
+- **Videos direkt in der App** (eingebettet, im Workout als Overlay mit Auto-Pause)
+- **Erinnerungen**: Wochenplan als wiederkehrende Kalendertermine mit Alarm (iPhone/Mac-Kalender)
+- **Übertragen** zwischen iPhone und Mac per AirDrop/Teilen, **Backup** als JSON-Datei – alle Daten bleiben auf dem Gerät
 
 ## Dateien
 
