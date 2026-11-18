@@ -1,5 +1,5 @@
 // Offline-Cache: App-Dateien liegen nach dem ersten Laden auf dem Gerät.
-const CACHE = 'klimmzug-v2';
+const CACHE = 'klimmzug-v3';
 const FILES = ['./', './index.html', './styles.css', './data.js', './app.js', './manifest.json', './icon-192.png', './icon-512.png', './icon-180.png'];
 
 self.addEventListener('install', e => {

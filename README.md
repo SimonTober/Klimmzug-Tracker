@@ -6,10 +6,11 @@ Läuft im Browser auf iPhone und Mac und lässt sich als App installieren (Safar
 ## Funktionen
 
 - **Klimmzug-Programm**: 10 Sätze pro Einheit mit steigender Last, Pausen-Stoppuhr, Max-Test, Verlauf mit Prognose bis Ende 2026
-- **32 Übungen** (Stange, Oberkörper, Beine, Core, Cardio) mit Schritt-für-Schritt-Anleitung, Tipp und YouTube-Tutorial
-- **9 fertige Workouts** + **eigene Workouts** zusammenstellen
-- **Interaktiver Workout-Player**: Countdown-Ring, automatische Pausen, Töne, deutsche Sprachansage, Display bleibt an, Tastatursteuerung am Mac (Leertaste, Pfeiltasten)
-- **Fortschritt**: Wochenziel, Aktivitäts-Balken, Kalender, Serie, kcal-Schätzung, 16 Erfolge
+- **Persönlicher Coach**: Ziel, Level und Trainingstage wählen – daraus entsteht jede Woche ein Plan; die Intensität passt sich nach jedem Workout an
+- **40 Übungen** (Stange, Oberkörper, Beine, Core, Cardio, Mobility) mit Schritt-für-Schritt-Anleitung, Tipp und YouTube-Tutorial
+- **10 fertige Workouts**, Aufwärmen und Cool-down + **eigene Workouts** zusammenstellen
+- **Interaktiver Workout-Player**: Countdown-Ring, automatische Pausen, Töne, deutsche Sprachansage, Display bleibt an, Wiederholungen anpassen, persönliche Bestleistungen, Tastatursteuerung am Mac (Leertaste, Pfeiltasten, +/-)
+- **Fortschritt**: Wochenziel, Aktivitäts-Balken, Kalender, Serie, kcal-Schätzung, 20 Erfolge
 - **Backup** als JSON-Datei – alle Daten bleiben auf dem Gerät
 
 ## Dateien

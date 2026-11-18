@@ -42,9 +42,10 @@ const ICONS = {
   core: '<rect x="7" y="3" width="10" height="18" rx="5"/><path d="M7 9h10M7 15h10M12 3v18"/>',
   cardio: '<path d="M3 12h4l2-5 4 10 2-5h6"/>',
   repeat: '<path d="M17 2l4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
+  mob: '<circle cx="12" cy="4" r="2"/><path d="M3 9l9 2 9-2M12 11v5l-4 6M12 16l4 6"/>',
   trash: '<path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15"/>',
 };
-const CAT_ICON = { bar: 'bar', push: 'push', legs: 'legs', core: 'core', cardio: 'cardio' };
+const CAT_ICON = { bar: 'bar', push: 'push', legs: 'legs', core: 'core', cardio: 'cardio', mobility: 'mob' };
 function icon(name, cls){ return '<svg class="i'+(cls ? ' '+cls : '')+'" viewBox="0 0 24 24" aria-hidden="true">'+(ICONS[name] || '')+'</svg>'; }
 function hydrateIcons(root){ (root || document).querySelectorAll('[data-i]').forEach(el => { el.outerHTML = icon(el.dataset.i); }); }
 const YT_SVG = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
@@ -54,14 +55,15 @@ const YT_SVG = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
 // ---------------------------------------------------------------------
 function loadState(){
   const fresh = { currentMax: 8, goal: 20, sessions: [], sessionCount: 0, doneSets: 0, tests: [],
-    workouts: [], custom: [], badges: [],
-    settings: { name: '', weeklyGoal: 3, weight: 75, sound: true, voice: true } };
+    workouts: [], custom: [], badges: [], coach: null, pbs: {}, pbHits: 0,
+    settings: { name: '', weeklyGoal: 3, weight: 75, sound: true, voice: true, warmup: true } };
   try {
     const s = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
     if (s && Array.isArray(s.sessions)) {
       const st = Object.assign(fresh, s);
       st.settings = Object.assign({}, fresh.settings, s.settings || {});
       ['tests','workouts','custom','badges'].forEach(k => { if(!Array.isArray(st[k])) st[k] = []; });
+      if(!st.pbs || typeof st.pbs !== 'object' || Array.isArray(st.pbs)) st.pbs = {};
       return st;
     }
   } catch(e) {}
@@ -178,8 +180,15 @@ function renderHome(){
 
   // Hero: Klimmzug-Einheit, wenn fällig – sonst Workout des Tages
   const due = pullupDue(), doneToday = activityDates().includes(todayStr());
+  const plan = weekPlan(), todayItem = plan.find(it => it.date === todayStr() && !planItemDone(it, plan));
+  renderPlan();
   let hero;
-  if(due <= 0 && !doneToday){
+  if(todayItem && todayItem.wid !== 'pullup'){
+    const w = getWorkout(todayItem.wid);
+    hero = '<div class="hero"><div class="hero-icon">'+icon(CAT_ICON[w.focus])+'</div><div><div class="tag">Heute in deinem Plan</div><h3>'+esc(w.name)+'</h3>'
+      + '<div class="meta">'+w.steps.length+' Übungen · '+w.rounds+' Runden · ~'+Math.round(estimateSec(w)/60)+' min</div></div>'
+      + '<button class="btn btn-dark" onclick="startW(\''+w.id+'\')">Workout starten '+icon('chev','s')+'</button></div>';
+  } else if((todayItem && todayItem.wid === 'pullup') || (!state.coach && due <= 0 && !doneToday)){
     const base = Math.floor(state.currentMax/2), n = state.sessionCount % 10;
     hero = '<div class="hero"><div class="hero-icon">'+icon('bar')+'</div><div><div class="tag">Heute fällig</div><h3>Klimmzug-Programm<br/>Session '+(state.sessions.length+1)+'</h3>'
       + '<div class="meta">10 Sätze · '+n+'× '+(base+1)+' + '+(10-n)+'× '+base+' Wdh.</div></div>'
@@ -188,14 +197,14 @@ function renderHome(){
     const w = workoutOfDay();
     hero = '<div class="hero"><div class="hero-icon">'+icon(CAT_ICON[w.focus])+'</div><div><div class="tag">'+(doneToday ? 'Bonus-Workout' : 'Workout des Tages')+'</div><h3>'+esc(w.name)+'</h3>'
       + '<div class="meta">'+w.steps.length+' Übungen · '+w.rounds+' Runden · ~'+Math.round(estimateSec(w)/60)+' min</div></div>'
-      + '<button class="btn btn-dark" onclick="startWorkout(\''+w.id+'\')">Workout starten '+icon('chev','s')+'</button></div>';
+      + '<button class="btn btn-dark" onclick="startW(\''+w.id+'\')">Workout starten '+icon('chev','s')+'</button></div>';
   }
   $('heroBox').innerHTML = hero;
 
   // Wochenring
   const wk = weekKey(new Date());
   const thisWeek = activityDates().filter(ds => weekKey(parseDate(ds)) === wk);
-  const days = new Set(thisWeek).size, goal = state.settings.weeklyGoal || 3;
+  const days = new Set(thisWeek).size, goal = state.coach ? state.coach.days : (state.settings.weeklyGoal || 3);
   $('weekRing').innerHTML = ringSVG(days/goal) + '<div class="center"><div class="big">'+days+'/'+goal+'</div><div class="small">Trainingstage</div></div>';
   const wSec = sum(state.workouts.filter(w => weekKey(parseDate(w.date)) === wk).map(w => w.dur))
     + sum(state.sessions.filter(s => weekKey(parseDate(s.date)) === wk).map(sessionSec));
@@ -219,6 +228,123 @@ function renderHome(){
   $('recentList').innerHTML = items.length ? items.map(activityRow).join('')
     : '<div class="card" style="text-align:center"><div style="font-size:32px">🏁</div><p class="sub" style="margin-top:6px">Noch keine Aktivität. Starte dein erstes Workout!</p></div>';
 }
+
+// =====================================================================
+//  COACH: Ziel, Level, Wochenplan
+// =====================================================================
+const GOALS = {
+  pullups:  { em: '🧗', name: 'Mehr Klimmzüge', desc: 'Klimmzug-Programm plus passende Ergänzung' },
+  strength: { em: '💪', name: 'Kraft aufbauen', desc: 'Stange, Push, Beine und Core im Wechsel' },
+  fit:      { em: '🧘', name: 'Fit & beweglich', desc: 'Ganzkörper, Core und Mobility' },
+  burn:     { em: '🔥', name: 'Fett verbrennen', desc: 'HIIT und intensive Zirkel' },
+};
+const PLAN_DAYS = { 2: [0,3], 3: [0,2,4], 4: [0,1,3,5], 5: [0,1,2,4,5], 6: [0,1,2,3,4,5] };
+function planSeq(goal, level){
+  const bar = ['first-pullup','bar-strength','bar-beast'][Math.max(0, Math.min(2, level-1))];
+  return {
+    pullups:  ['pullup', level === 1 ? 'first-pullup' : 'core-crusher', 'pullup', 'mobility-flow', 'pullup', 'push-day'],
+    strength: [bar, 'push-day', 'leg-day', 'core-crusher', bar, 'full-body-starter'],
+    fit:      ['full-body-starter', 'mobility-flow', 'core-crusher', 'leg-day', 'quick-7', 'push-day'],
+    burn:     ['hiit-15', 'full-body-starter', 'quick-7', 'leg-day', 'hiit-15', 'core-crusher'],
+  }[goal] || ['full-body-starter'];
+}
+function weekPlan(){
+  if(!state.coach) return [];
+  const c = state.coach, days = PLAN_DAYS[c.days] || PLAN_DAYS[3], seq = planSeq(c.goal, c.level);
+  const mon = parseDate(weekKey(new Date()));
+  return days.map((dow, i) => ({ dow, date: toStr(addDays(mon, dow)), wid: seq[i % seq.length] }));
+}
+// Welche Plantage sind erledigt? Flexibel: Training an einem anderen Tag der Woche zählt auch.
+// Erst exakte Workout-Treffer zuordnen, dann übrige Workouts den frühesten offenen Tagen.
+function planDoneSet(plan){
+  const done = new Set();
+  if(!plan.length) return done;
+  const wk = weekKey(parseDate(plan[0].date));
+  const pullN = state.sessions.filter(s => weekKey(parseDate(s.date)) === wk).length;
+  plan.forEach((it, i) => { if(it.wid === 'pullup' && plan.slice(0, i+1).filter(p => p.wid === 'pullup').length <= pullN) done.add(i); });
+  const logs = state.workouts.filter(w => weekKey(parseDate(w.date)) === wk && w.wid !== 'cooldown' && w.wid !== 'warmup');
+  const rest = [], used = new Set();   // höchstens ein Plantag pro Trainingstag
+  logs.forEach(w => {
+    if(used.has(w.date)) return;
+    const i = plan.findIndex((it, k) => !done.has(k) && it.wid === w.wid);
+    if(i >= 0){ done.add(i); used.add(w.date); } else rest.push(w);
+  });
+  rest.forEach(w => {
+    if(used.has(w.date)) return;
+    const i = plan.findIndex((it, k) => !done.has(k) && it.wid !== 'pullup');
+    if(i >= 0){ done.add(i); used.add(w.date); }
+  });
+  return done;
+}
+function planItemDone(it, plan){ return planDoneSet(plan).has(plan.indexOf(it)); }
+function planName(wid){ return wid === 'pullup' ? 'Klimmzug-Programm' : (getWorkout(wid) || {}).name || ''; }
+function openPlanItem(wid){ if(wid === 'pullup') go('pullup'); else openWorkout(wid); }
+
+function renderPlan(){
+  const box = $('planBox');
+  if(!state.coach){
+    box.innerHTML = '<button class="card coach-cta" onclick="openOnboarding()"><div class="w-ic" style="background:var(--lime)">'+icon('target')+'</div>'
+      + '<div class="grow" style="text-align:left"><b>Dein persönlicher Coach</b><small>3 Fragen – dein Trainingsplan für jede Woche</small></div><span class="chev">'+icon('chev')+'</span></button>';
+    return;
+  }
+  const plan = weekPlan(), today = todayStr(), mon = parseDate(weekKey(new Date()));
+  let html = '<div class="plan">';
+  for(let d = 0; d < 7; d++){
+    const ds = toStr(addDays(mon, d)), it = plan.find(p => p.dow === d);
+    const done = it && planItemDone(it, plan), past = ds < today;
+    const cls = 'pday' + (ds === today ? ' today' : '') + (it ? ' planned' : '') + (done ? ' done' : '') + (it && past && !done ? ' missed' : '');
+    const w = it && it.wid !== 'pullup' ? getWorkout(it.wid) : null;
+    const ic = !it ? '<i class="rest-dot"></i>' : done ? icon('check','s') : icon(it.wid === 'pullup' ? 'bar' : CAT_ICON[w ? w.focus : 'cardio'], 's');
+    html += '<button class="'+cls+'"'+(it ? ' onclick="openPlanItem(\''+it.wid+'\')" title="'+esc(planName(it.wid))+'"' : ' disabled')+'><small>'+DE_DAYS[d]+'</small><span class="pdot">'+ic+'</span></button>';
+  }
+  html += '</div>';
+  const doneN = plan.filter(it => planItemDone(it, plan)).length;
+  const next = plan.find(it => !planItemDone(it, plan) && it.date >= today);
+  html += '<div class="plan-foot"><span>'+GOALS[state.coach.goal].em+' '+GOALS[state.coach.goal].name+' · '+doneN+'/'+plan.length+' erledigt</span>'
+    + (next ? '<span class="muted">'+(next.date === today ? 'Heute' : DE_DAYS[next.dow])+': '+esc(planName(next.wid))+'</span>' : '<span style="color:var(--lime)">Woche geschafft! 🎉</span>')+'</div>';
+  box.innerHTML = '<div class="card">'+html+'</div>';
+}
+
+let ob = null;
+function openOnboarding(){
+  ob = { step: 0, goal: state.coach ? state.coach.goal : null, level: state.coach ? state.coach.level : null, days: state.coach ? state.coach.days : 3 };
+  renderOnboarding();
+}
+function renderOnboarding(){
+  const dots = '<div class="ob-dots">'+[0,1,2,3].map(i => '<i class="'+(i <= ob.step ? 'on' : '')+'"></i>').join('')+'</div>';
+  let body = '';
+  if(ob.step === 0){
+    body = '<h3>Was ist dein Ziel?</h3><p>Dein Coach baut daraus deinen Wochenplan.</p><div class="opts">'
+      + Object.entries(GOALS).map(([k, g]) => '<button class="opt'+(ob.goal === k ? ' on' : '')+'" onclick="ob.goal=\''+k+'\';ob.step=1;renderOnboarding()"><span class="em">'+g.em+'</span><span><b>'+g.name+'</b><small>'+g.desc+'</small></span></button>').join('')+'</div>';
+  } else if(ob.step === 1){
+    const lv = [['🌱','Einsteiger','Klimmzüge sind noch schwer oder unmöglich'],['🔥','Fortgeschritten','Ein paar saubere Klimmzüge klappen'],['⚡','Profi','10+ Klimmzüge, Lust auf Herausforderung']];
+    body = '<h3>Wie fit bist du?</h3><p>Ehrlich sein lohnt sich – der Coach passt sich später an.</p><div class="opts">'
+      + lv.map((l, i) => '<button class="opt'+(ob.level === i+1 ? ' on' : '')+'" onclick="ob.level='+(i+1)+';ob.step=2;renderOnboarding()"><span class="em">'+l[0]+'</span><span><b>'+l[1]+'</b><small>'+l[2]+'</small></span></button>').join('')+'</div>';
+  } else if(ob.step === 2){
+    body = '<h3>Wie oft pro Woche?</h3><p>Lieber realistisch – Regelmäßigkeit schlägt alles.</p>'
+      + '<div class="days-pick">'+[2,3,4,5,6].map(n => '<button class="'+(ob.days === n ? 'on' : '')+'" onclick="ob.days='+n+';renderOnboarding()"><b>'+n+'</b><small>Tage</small></button>').join('')+'</div>'
+      + '<button class="btn btn-lime btn-block" style="margin-top:18px;padding:16px" onclick="ob.step=3;renderOnboarding()">Plan erstellen</button>';
+  } else {
+    const prev = state.coach; state.coach = { goal: ob.goal, level: ob.level, days: ob.days, scale: prev ? prev.scale : 1 };
+    const plan = weekPlan(); state.coach = prev;
+    body = '<h3>Dein Wochenplan 🎯</h3><p>'+GOALS[ob.goal].name+' · '+ob.days+' Tage pro Woche. Er erneuert sich jeden Montag.</p><div style="margin-top:14px">'
+      + plan.map(it => { const w = it.wid === 'pullup' ? null : getWorkout(it.wid);
+          return '<div class="list-item"><div class="thumb" style="background:'+(w ? CATEGORIES[w.focus].color : 'var(--lime)')+';color:var(--lime-ink)">'+icon(w ? CAT_ICON[w.focus] : 'bar')+'</div>'
+            + '<div class="grow"><b>'+DE_DAYS[it.dow]+' · '+esc(planName(it.wid))+'</b><small>'+(w ? '~'+Math.round(estimateSec(w)/60)+' min · '+LEVELS[w.level] : '10 Sätze · steigende Last')+'</small></div></div>'; }).join('')
+      + '</div><button class="btn btn-lime btn-block" style="margin-top:18px;padding:16px" onclick="finishOnboarding()">Los geht\'s</button>';
+  }
+  const back = ob.step > 0 ? '<button class="btn btn-ghost" style="padding:8px 14px;font-size:12px" onclick="ob.step--;renderOnboarding()">‹ Zurück</button>' : '<button class="btn btn-ghost" style="padding:8px 14px;font-size:12px" onclick="skipOnboarding()">Später</button>';
+  openSheet('<div class="row" style="justify-content:space-between;margin-bottom:14px">'+back+dots+'</div>'+body);
+}
+function finishOnboarding(){
+  const scale = state.coach ? state.coach.scale : ({ 1: .8, 2: 1, 3: 1.2 }[ob.level]);
+  state.coach = { goal: ob.goal, level: ob.level, days: ob.days, scale };
+  state.settings.weeklyGoal = ob.days;
+  if(ob.goal === 'pullups' && ob.level === 1 && state.currentMax > 5 && !state.sessions.length) state.currentMax = 3;
+  save(); closeSheet(); renderHome(); confetti();
+  toast('🎯', 'Dein Plan steht!', ob.days+' Trainingstage pro Woche');
+}
+function skipOnboarding(){ state.coachSkipped = true; save(); closeSheet(); }
 
 function allActivities(){
   const a = state.sessions.map((s, i) => ({ kind: 's', date: s.date, x: s, i }))
@@ -249,8 +375,15 @@ function activityRow(it){
 // =====================================================================
 let workoutFilter = 'all';
 function allWorkouts(){ return WORKOUTS.concat(state.custom); }
-function getWorkout(id){ return allWorkouts().find(w => w.id === id); }
-function stepAmount(w, step){ const e = exById(step[0]); return w.work ? w.work : (step[1] || e.def); }
+function getWorkout(id){ return allWorkouts().concat([WARMUP, COOLDOWN]).find(w => w.id === id); }
+// Der Coach skaliert Wiederholungen/Haltezeiten je nach Rückmeldung (nicht bei Intervall- und Mobility-Workouts)
+function coachScale(w){ return (w.work || w.focus === 'mobility') ? 1 : ((state.coach && state.coach.scale) || 1); }
+function stepAmount(w, step){
+  const e = exById(step[0]);
+  if(w.work) return w.work;
+  return Math.max(1, Math.round((step[1] || e.def) * coachScale(w)));
+}
+function startW(id){ const w = getWorkout(id); if(w) startWorkout(w, { warm: state.settings.warmup && w.focus !== 'mobility' }); }
 function stepIsTime(w, step){ return !!w.work || exById(step[0]).type === 'time'; }
 function estimateSec(w){
   const per = w.steps.map(s => stepIsTime(w, s) ? stepAmount(w, s) : stepAmount(w, s) * 3.5);
@@ -291,7 +424,7 @@ function openWorkout(id){
       + '<img class="thumb" style="object-fit:cover;background:#222" src="'+ytThumb(e.id)+'" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'"/>'
       + '<div class="grow"><b>'+esc(e.name)+'</b><small>'+(t ? amt+' Sek.' : amt+' Wdh.')+' · '+esc(e.muscles)+'</small></div><span class="chev">'+icon('chev')+'</span></button>';
   }).join('');
-  openSheet('<div class="pills"><span class="pill lime">'+c.name+'</span><span class="pill">'+LEVELS[w.level || 1]+'</span>'+(done ? '<span class="pill">'+done+'× absolviert</span>' : '')+'</div>'
+  openSheet('<div class="pills"><span class="pill lime">'+c.name+'</span><span class="pill">'+LEVELS[w.level || 1]+'</span>'+(done ? '<span class="pill">'+done+'× absolviert</span>' : '')+(coachScale(w) !== 1 ? '<span class="pill lime">Coach: '+Math.round(coachScale(w)*100)+' %</span>' : '')+'</div>'
     + '<h3>'+esc(w.name)+'</h3>'
     + (w.desc ? '<p style="margin-top:6px">'+esc(w.desc)+'</p>' : '')
     + '<div class="tiles" style="margin:16px 0">'
@@ -299,7 +432,8 @@ function openWorkout(id){
     + '<div class="tile"><div class="ic">'+icon('repeat','s')+'</div><b>'+w.rounds+'</b><small>Runden</small></div>'
     + '<div class="tile"><div class="ic">'+icon('flame','s')+'</div><b>~'+Math.round(estimateKcal(w))+'</b><small>kcal</small></div></div>'
     + '<div class="label">Übungen pro Runde · '+w.rest+' s Pause</div>' + steps
-    + '<button class="btn btn-lime btn-block" style="margin-top:18px;padding:16px" onclick="startWorkout(\''+w.id+'\')">'+icon('play','f')+' Workout starten</button>'
+    + (w.focus !== 'mobility' ? '<div class="card" style="margin-top:16px;padding:4px 16px"><div class="field"><span>Mit Aufwärmen<br/><small class="muted">3 Minuten Mobilisation vorab</small></span><button class="switch'+(state.settings.warmup ? ' on' : '')+'" role="switch" aria-checked="'+!!state.settings.warmup+'" aria-label="Mit Aufwärmen" onclick="toggleSetting(\'warmup\',this)"></button></div></div>' : '')
+    + '<button class="btn btn-lime btn-block" style="margin-top:14px;padding:16px" onclick="startW(\''+w.id+'\')">'+icon('play','f')+' Workout starten</button>'
     + (w.custom ? '<button class="btn btn-danger btn-block" style="margin-top:8px" onclick="deleteCustom(\''+w.id+'\')">Workout löschen</button>' : ''));
 }
 function estimateKcal(w){
@@ -357,7 +491,7 @@ function deleteCustom(id){
 // =====================================================================
 let libFilter = 'all';
 function renderLibrary(){
-  $('libCount').textContent = EXERCISES.length+' Übungen · alle mit Video-Tutorial';
+  $('libCount').textContent = EXERCISES.length+' Übungen · jede mit Video-Tutorial';
   const chips = [['all','Alle']].concat(Object.entries(CATEGORIES).map(([k,v]) => [k, v.name]));
   $('libChips').innerHTML = chips.map(([k,n]) => '<button class="chip'+(libFilter === k ? ' on' : '')+'" onclick="libFilter=\''+k+'\';renderLibrary()">'+n+'</button>').join('');
   const q = ($('libSearch').value || '').trim().toLowerCase();
@@ -388,7 +522,9 @@ function openExercise(id){
     + videoCard(id)
     + '<div class="label" style="margin-top:16px">So geht\'s</div><ol class="steps">'+e.steps.map(s => '<li>'+esc(s)+'</li>').join('')+'</ol>'
     + '<div class="tip">'+icon('bulb')+'<span>'+esc(e.tip)+'</span></div>'
-    + (reps ? '<p class="sub" style="margin-top:12px">Bisher in Workouts: <b style="color:var(--lime)">'+reps+(e.type === 'time' ? ' Sek.' : ' Wdh.')+'</b></p>' : '')
+    + (reps || state.pbs[id] ? '<div class="tiles" style="margin-top:14px;grid-template-columns:1fr 1fr">'
+      + '<div class="tile"><div class="ic">'+icon('trophy','s')+'</div><b>'+(state.pbs[id] || '–')+(state.pbs[id] ? (e.type === 'time' ? ' s' : '') : '')+'</b><small>Bestleistung'+(e.type === 'time' ? '' : ' (Wdh.)')+'</small></div>'
+      + '<div class="tile"><div class="ic">'+icon('repeat','s')+'</div><b>'+reps+(e.type === 'time' ? ' s' : '')+'</b><small>gesamt in Workouts</small></div></div>' : '')
     + (inW.length ? '<div class="label" style="margin-top:18px">Enthalten in</div><div class="row">'+inW.map(w => '<button class="chip" onclick="openWorkout(\''+w.id+'\')">'+esc(w.name)+'</button>').join('')+'</div>' : '')
     + '<button class="btn btn-lime btn-block" style="margin-top:18px;padding:16px" onclick="startSingle(\''+id+'\')">'+icon('play','f')+' 3 Sätze trainieren</button>');
 }
@@ -788,6 +924,10 @@ const BADGES = [
   { id: 'tenh',    em: '🕙', name: '10 Stunden',     desc: '10 Stunden Training', test: s => s.sec >= 36000 },
   { id: 'early',   em: '🌅', name: 'Früher Vogel',   desc: 'Workout vor 8 Uhr', test: s => s.early },
   { id: 'night',   em: '🌙', name: 'Nachteule',      desc: 'Workout nach 21 Uhr', test: s => s.night },
+  { id: 'mobile',  em: '🧘', name: 'Geschmeidig',    desc: '5 Mobility-Einheiten', test: s => s.mobility >= 5 },
+  { id: 'pbs',     em: '📈', name: 'Rekordjäger',    desc: '5 neue Bestleistungen', test: s => s.pbHits >= 5 },
+  { id: 'plan',    em: '🎯', name: 'Planerfüller',   desc: 'Eine Woche nach Plan komplett', test: s => s.planWeek },
+  { id: 'lib',     em: '📚', name: 'Entdecker',      desc: '30 verschiedene Übungen', test: s => s.distinct >= 30 },
 ];
 function badgeStats(){
   const distinct = new Set(); state.workouts.forEach(w => Object.keys(w.reps || {}).forEach(k => distinct.add(k)));
@@ -795,7 +935,9 @@ function badgeStats(){
   const hours = state.workouts.filter(w => w.t).map(w => new Date(w.t).getHours());
   return { count: activityCount(), streak: streakWeeks(), pulls: totalPullups(), max: state.currentMax, goal: state.goal || 20,
     sessions: state.sessions.length, distinct: distinct.size, hiit: state.workouts.filter(w => w.wid === 'hiit-15').length,
-    sec: sum(Object.values(secByDate())), early: hours.some(h => h < 8), night: hours.some(h => h >= 21) };
+    sec: sum(Object.values(secByDate())), early: hours.some(h => h < 8), night: hours.some(h => h >= 21),
+    mobility: state.workouts.filter(w => w.focus === 'mobility').length, pbHits: state.pbHits || 0,
+    planWeek: (() => { const pl = weekPlan(); return pl.length > 0 && pl.every(it => planItemDone(it, pl)); })() };
 }
 function renderBadges(){
   const st = badgeStats(), have = BADGES.filter(b => b.test(st)).length;
@@ -814,41 +956,49 @@ function checkBadges(){
 function openSettings(){
   const s = state.settings;
   const sw = (k, label, sub) => '<div class="field"><span>'+label+(sub ? '<br/><small class="muted">'+sub+'</small>' : '')+'</span><button class="switch'+(s[k] ? ' on' : '')+'" role="switch" aria-checked="'+!!s[k]+'" aria-label="'+label+'" onclick="toggleSetting(\''+k+'\',this)"></button></div>';
-  openSheet('<h3>Einstellungen</h3><div class="card" style="margin-top:14px;padding:6px 16px">'
+  const c = state.coach;
+  openSheet('<h3>Einstellungen</h3>'
+    + '<button class="card coach-cta" style="margin-top:14px" onclick="openOnboarding()"><div class="w-ic" style="background:var(--lime)">'+icon('target')+'</div><div class="grow" style="text-align:left"><b>'+(c ? GOALS[c.goal].em+' '+GOALS[c.goal].name : 'Coach einrichten')+'</b><small>'+(c ? c.days+' Tage/Woche · '+LEVELS[c.level]+' · Intensität '+Math.round((c.scale||1)*100)+' %' : 'Ziel, Level und Trainingstage festlegen')+'</small></div><span class="chev">'+icon('chev')+'</span></button>'
+    + '<div class="card" style="margin-top:12px;padding:6px 16px">'
     + '<div class="field"><span>Dein Name</span><input type="text" maxlength="20" value="'+esc(s.name)+'" placeholder="optional" onchange="state.settings.name=this.value.trim();save();renderHome()" style="width:55%"/></div>'
-    + '<div class="field"><span>Wochenziel<br/><small class="muted">Trainingstage pro Woche</small></span><div class="stepper"><button onclick="setWeekly(-1)">−</button><b id="wgVal">'+s.weeklyGoal+'</b><button onclick="setWeekly(1)">+</button></div></div>'
+    + (c ? '' : '<div class="field"><span>Wochenziel<br/><small class="muted">Trainingstage pro Woche</small></span><div class="stepper"><button onclick="setWeekly(-1)">−</button><b id="wgVal">'+s.weeklyGoal+'</b><button onclick="setWeekly(1)">+</button></div></div>')
     + '<div class="field"><span>Körpergewicht<br/><small class="muted">für die kcal-Schätzung</small></span><input type="number" min="30" max="200" value="'+s.weight+'" onchange="state.settings.weight=Math.min(200,Math.max(30,parseInt(this.value)||75));save()"/></div>'
+    + sw('warmup', 'Automatisch aufwärmen', '3 Minuten vor jedem Workout')
     + sw('sound', 'Töne', 'Countdown-Pieptöne im Workout')
     + sw('voice', 'Sprachansage', 'Sagt Übungen und Pausen an')
     + '</div>');
 }
-function toggleSetting(k, el){ state.settings[k] = !state.settings[k]; save(); el.classList.toggle('on', state.settings[k]); el.setAttribute('aria-checked', state.settings[k]); if(k === 'voice' && state.settings.voice) say('Sprachansage an'); }
+function toggleSetting(k, el){ state.settings[k] = !state.settings[k]; save(); if(el && el.classList){ el.classList.toggle('on', state.settings[k]); el.setAttribute('aria-checked', state.settings[k]); } if(k === 'voice' && state.settings.voice) say('Sprachansage an'); }
 function setWeekly(d){ state.settings.weeklyGoal = Math.min(7, Math.max(1, state.settings.weeklyGoal + d)); $('wgVal').textContent = state.settings.weeklyGoal; save(); renderHome(); }
 
 // =====================================================================
 //  WORKOUT-PLAYER
 // =====================================================================
 let P = null;   // Player-Zustand
-function buildQueue(w){
-  const q = [{ kind: 'ready', secs: 5, ex: w.steps[0][0] }];
+function addRounds(q, w, warm){
   for(let r = 0; r < w.rounds; r++){
     w.steps.forEach((s, i) => {
       const time = stepIsTime(w, s);
-      q.push({ kind: 'work', ex: s[0], amount: stepAmount(w, s), time, round: r+1 });
+      q.push({ kind: 'work', ex: s[0], amount: stepAmount(w, s), time, round: r+1, warm });
       const last = i === w.steps.length - 1;
-      if(!last && w.rest > 0) q.push({ kind: 'rest', secs: w.rest, round: r+1 });
+      if(!last && w.rest > 0) q.push({ kind: 'rest', secs: w.rest, round: r+1, warm });
       if(last && r < w.rounds - 1 && w.roundRest > 0) q.push({ kind: 'rest', secs: w.roundRest, round: r+1, roundBreak: true });
     });
   }
+}
+function buildQueue(w, warm){
+  const q = [{ kind: 'ready', secs: 5, ex: (warm ? WARMUP : w).steps[0][0] }];
+  if(warm){ addRounds(q, WARMUP, true); q.push({ kind: 'rest', secs: 20, round: 1, warmEnd: true }); }
+  addRounds(q, w, false);
   return q;
 }
-function startWorkout(arg){
+function startWorkout(arg, opts){
   const w = typeof arg === 'string' ? getWorkout(arg) : arg;
   if(!w) return;
   closeSheet();
   unlockAudio();
-  P = { w, q: buildQueue(w), i: 0, paused: false, segStart: Date.now(), pausedAt: 0, startedAt: Date.now(),
-        workSec: {}, reps: {}, lastBeep: -1, timer: null, summary: false, feel: 0 };
+  P = { w, q: buildQueue(w, opts && opts.warm), i: 0, paused: false, segStart: Date.now(), pausedAt: 0, startedAt: Date.now(),
+        workSec: {}, reps: {}, best: {}, cur: 0, lastBeep: -1, timer: null, summary: false, feel: 0 };
   $('player').classList.add('show');
   document.body.style.overflow = 'hidden';
   requestWake();
@@ -867,18 +1017,27 @@ function enterSeg(){
   const e = s.ex ? exById(s.ex) : null;
   if(s.kind === 'ready') say('Mach dich bereit. Erste Übung: '+e.name);
   else if(s.kind === 'work'){
+    P.cur = s.amount;
     beep(1046, .18); buzz(80);
     say(e.name + (s.time ? ', ' + s.amount + ' Sekunden' : ', ' + s.amount + ' Wiederholungen'));
   } else {
     const nx = nextWork(P.i+1);
-    say((s.roundBreak ? 'Runde geschafft. ' : 'Pause. ') + (nx ? 'Als Nächstes: ' + exById(nx.ex).name : ''));
+    say((s.warmEnd ? 'Aufwärmen geschafft. Jetzt geht es richtig los. ' : s.roundBreak ? 'Runde geschafft. ' : 'Pause. ') + (nx ? 'Als Nächstes: ' + exById(nx.ex).name : ''));
   }
   drawPlayer();
 }
 function logWork(s, secs){
   if(!s || s.kind !== 'work') return;
+  const val = s.time ? Math.round(secs) : P.cur;
   P.workSec[s.ex] = (P.workSec[s.ex] || 0) + secs;
-  P.reps[s.ex] = (P.reps[s.ex] || 0) + (s.time ? Math.round(secs) : s.amount);
+  P.reps[s.ex] = (P.reps[s.ex] || 0) + val;
+  // Bestleistung pro Satz (ohne Aufwärmen und ohne feste Intervalle)
+  if(!s.warm && !P.w.work && val > (P.best[s.ex] || 0)) P.best[s.ex] = val;
+}
+function adjReps(d){
+  if(!P) return; const s = seg(); if(s.kind !== 'work' || s.time) return;
+  P.cur = Math.max(0, Math.min(999, P.cur + d)); buzz(15); updatePlayerTime();
+  const r = $('pRing'); if(r){ r.classList.remove('pulse'); void r.offsetWidth; r.classList.add('pulse'); }
 }
 function advance(dir){
   if(!P || P.summary) return;
@@ -935,8 +1094,8 @@ function drawPlayer(){
   let phase, name, unit, center;
   if(s.kind === 'ready'){ phase = 'Gleich geht\'s los'; name = 'Mach dich bereit'; unit = 'Sekunden'; }
   const single = w.steps.length === 1;
-  if(s.kind === 'work'){ phase = (single ? 'Satz ' : 'Runde ')+s.round+' / '+totalRounds; name = e.name; unit = s.time ? 'Sekunden' : 'Wiederholungen'; }
-  else if(s.kind === 'rest'){ phase = s.roundBreak ? (single ? 'Satz geschafft' : 'Runde geschafft') : 'Pause'; name = 'Durchatmen'; unit = 'Sekunden Pause'; }
+  if(s.kind === 'work'){ phase = s.warm ? 'Aufwärmen' : (single ? 'Satz ' : 'Runde ')+s.round+' / '+totalRounds; name = e.name; unit = s.time ? 'Sekunden' : 'Wiederholungen'; }
+  else if(s.kind === 'rest'){ phase = s.warmEnd ? 'Aufwärmen geschafft' : s.roundBreak ? (single ? 'Satz geschafft' : 'Runde geschafft') : 'Pause'; name = s.warmEnd ? 'Jetzt geht\'s los' : 'Durchatmen'; unit = 'Sekunden Pause'; }
 
   const showNext = s.kind !== 'work' ? (s.kind === 'ready' ? nextWork(1) : nextWork(P.i+1)) : nextWork(P.i+1);
   const nextHtml = showNext ? '<div class="p-next">'+(VIDEOS[showNext.ex] ? '<img src="'+ytThumb(showNext.ex)+'" alt="" onerror="this.style.visibility=\'hidden\'"/>' : '<div class="ph"></div>')
@@ -947,7 +1106,7 @@ function drawPlayer(){
   pl.innerHTML =
     '<div class="p-top"><button class="icon-btn" onclick="closePlayer()" aria-label="Schließen">'+icon('x')+'</button>'
     + '<div class="ttl">'+esc(w.name)+'</div>'
-    + '<button class="icon-btn" onclick="toggleSetting(\'voice\',{classList:{toggle(){}},setAttribute(){}});drawPlayer()" aria-label="Sprachansage umschalten" style="'+(state.settings.voice ? 'color:var(--lime)' : 'opacity:.4')+'">'+icon('vol')+'</button></div>'
+    + '<button class="icon-btn" onclick="toggleSetting(\'voice\');drawPlayer()" aria-label="Sprachansage umschalten" style="'+(state.settings.voice ? 'color:var(--lime)' : 'opacity:.4')+'">'+icon('vol')+'</button></div>'
     + '<div class="p-prog">'+prog+'</div>'
     + '<div class="p-main">'
     + '<div class="p-phase">'+phase+'</div>'
@@ -957,8 +1116,8 @@ function drawPlayer(){
     + nextHtml
     + '</div>'
     + '<div class="p-extra">'
-    + (repsWork ? '<button class="btn btn-lime done-btn" onclick="advance(1)">'+icon('check')+' Erledigt</button>' : '')
-    + (s.kind === 'rest' ? '<button class="btn btn-ghost" onclick="addRest(20)">+20 s</button><button class="btn btn-ghost" onclick="advance(1)">Pause überspringen</button>' : '')
+    + (repsWork ? '<div class="adj"><button onclick="adjReps(-1)" aria-label="Eine Wiederholung weniger">−</button><span>Geschafft? Anpassen</span><button onclick="adjReps(1)" aria-label="Eine Wiederholung mehr">+</button></div><button class="btn btn-lime done-btn" onclick="advance(1)">'+icon('check')+' Erledigt</button>' : '')
+    + (s.kind === 'rest' ? '<div class="row center"><button class="btn btn-ghost" onclick="addRest(20)">+20 s</button><button class="btn btn-ghost" onclick="advance(1)">Pause überspringen</button></div>' : '')
     + (s.kind === 'ready' ? '<button class="btn btn-ghost" onclick="advance(1)">Sofort starten</button>' : '')
     + '</div>'
     + '<div class="p-ctrl">'
@@ -978,8 +1137,8 @@ function updatePlayerTime(){
     num.textContent = Math.ceil(left);
     bar.style.strokeDashoffset = (c * (1 - left/dur)).toFixed(1);
   } else {
-    num.textContent = s.amount + '×';
-    bar.style.strokeDashoffset = 0;
+    num.textContent = P.cur + '×';
+    bar.style.strokeDashoffset = (c * (1 - Math.min(1, P.cur / Math.max(1, s.amount)))).toFixed(1);
     const unit = document.querySelector('#pRing .unit'); if(unit) unit.textContent = 'Wiederholungen · '+fmtTime(el);
   }
   const cur = document.querySelector('.p-prog i.cur');
@@ -992,6 +1151,14 @@ function finishWorkout(){
   const kcal = sum(Object.entries(p.workSec).map(([id, sec]) => kcalFor(exById(id).met, sec))) + kcalFor(2, Math.max(0, totalSec - sum(Object.values(p.workSec))));
   const log = { wid: p.w.id, name: p.w.name, focus: p.w.focus, date: todayStr(), t: Date.now(), dur: totalSec, kcal: Math.round(kcal), reps: p.reps };
   if(p.w.work) log.timed = true;
+  // Bestleistungen vergleichen – nur echte Verbesserungen gegenüber einem früheren Wert feiern
+  const newPBs = [];
+  Object.entries(p.best).forEach(([id, v]) => {
+    const old = state.pbs[id] || 0;
+    if(v > old){ if(old > 0) newPBs.push({ id, v, old }); state.pbs[id] = v; }
+  });
+  state.pbHits = (state.pbHits || 0) + newPBs.length;
+  if(newPBs.length) log.pbs = newPBs.map(x => x.id);
   if(Object.keys(p.reps).length) { state.workouts.push(log); sortByDate(state.workouts); save(); }
   p.summary = true; p.log = log;
   releaseWake();
@@ -1006,23 +1173,41 @@ function finishWorkout(){
     + '<div class="tile"><div class="ic">'+icon('clock','s')+'</div><b>'+fmtTime(totalSec)+'</b><small>Dauer</small></div>'
     + '<div class="tile"><div class="ic">'+icon('flame','s')+'</div><b>'+Math.round(kcal)+'</b><small>kcal</small></div>'
     + '<div class="tile"><div class="ic">'+icon('repeat','s')+'</div><b>'+(totalReps || Object.keys(p.reps).length)+'</b><small>'+(totalReps ? 'Wiederholungen' : 'Übungen')+'</small></div></div>'
+    + (newPBs.length ? '<div class="pb-box"><div class="label" style="color:var(--lime);margin-bottom:6px">🏅 Neue Bestleistung'+(newPBs.length > 1 ? 'en' : '')+'</div>'
+        + newPBs.map(x => { const e = exById(x.id); return '<div class="pb-row"><span>'+esc(e.name)+'</span><b>'+x.old+' → '+x.v+(e.type === 'time' ? ' s' : '')+'</b></div>'; }).join('')+'</div>' : '')
     + '<div class="sub">Wie hat es sich angefühlt?</div>'
     + '<div class="feel" style="width:100%;max-width:380px" id="pFeel">'+FEELS.map((f, i) => '<button aria-label="'+FEEL_TXT[i]+'" onclick="setWorkoutFeel('+(i+1)+')">'+f+'</button>').join('')+'</div>'
-    + '<button class="btn btn-lime done-btn" onclick="closePlayer(true)">Fertig</button></div>';
+    + '<div class="sub" id="pCoach" style="min-height:18px;color:var(--lime)"></div>'
+    + '<button class="btn btn-lime done-btn" onclick="closePlayer(true)">Fertig</button>'
+    + (p.w.focus !== 'mobility' ? '<button class="btn btn-ghost done-btn" style="padding:14px" onclick="startCooldown()">'+icon('mob','s')+' Cool-down & Dehnen · 4 min</button>' : '')
+    + '</div>';
+  if(newPBs.length) setTimeout(() => { beep(1320, .1); setTimeout(() => beep(1568, .2), 120); }, 600);
   confetti();
   checkBadges();
 }
 function setWorkoutFeel(v){
   if(!P || !P.log) return;
-  P.log.feel = v; save();
+  P.log.feel = v;
+  // Coach passt die Intensität an: zu schwer -> weniger, locker -> mehr
+  if(state.coach && !P.w.work && P.w.focus !== 'mobility'){
+    if(P.scaleBefore === undefined) P.scaleBefore = state.coach.scale || 1;
+    const f = { 1: .9, 2: .95, 3: 1, 4: 1.03, 5: 1.06 }[v];
+    state.coach.scale = Math.round(Math.min(1.6, Math.max(.6, P.scaleBefore * f)) * 100) / 100;
+    const diff = Math.round((state.coach.scale - P.scaleBefore) * 100);
+    $('pCoach').textContent = diff > 0 ? 'Coach: Nächstes Mal +'+diff+' % Wiederholungen 💪' : diff < 0 ? 'Coach: Nächstes Mal '+diff+' % – wir bauen dich auf.' : 'Coach: Intensität passt – so bleibt\'s.';
+  }
+  save();
   document.querySelectorAll('#pFeel button').forEach((b, i) => b.classList.toggle('on', i === v-1));
 }
+function startCooldown(){ closePlayer(true); startWorkout('cooldown'); }
 
 // Tastatur im Player (Mac)
 document.addEventListener('keydown', e => {
   if(!P || P.summary || !$('player').classList.contains('show')) return;
   if(e.target.tagName === 'INPUT') return;
   if(e.code === 'Space'){ e.preventDefault(); const s = seg(); if(s.kind === 'work' && !s.time) advance(1); else togglePause(); }
+  else if(e.key === '+' || e.key === 'ArrowUp'){ e.preventDefault(); adjReps(1); }
+  else if(e.key === '-' || e.key === 'ArrowDown'){ e.preventDefault(); adjReps(-1); }
   else if(e.key === 'ArrowRight') advance(1);
   else if(e.key === 'ArrowLeft') advance(-1);
   else if(e.key === 'Escape') closePlayer();
@@ -1145,4 +1330,5 @@ const startTab = (location.hash || '').slice(1);
 render();
 go(['home','workouts','library','pullup','profile'].includes(startTab) ? startTab : 'home');
 // Erfolge, die schon vor diesem Update erreicht wurden, still nachtragen (kein Toast-Gewitter)
+if(!state.coach && !state.coachSkipped) setTimeout(openOnboarding, 700);
 if(!state.badgesInit){ const st = badgeStats(); state.badges = BADGES.filter(b => b.test(st)).map(b => b.id); state.badgesInit = true; save(); }

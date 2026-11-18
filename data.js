@@ -7,6 +7,7 @@ const CATEGORIES = {
   legs:   { name: 'Beine',      color: '#ff9f5a' },
   core:   { name: 'Core',       color: '#c89bff' },
   cardio: { name: 'Cardio',     color: '#ff6b8b' },
+  mobility: { name: 'Mobility', color: '#5ce0c6' },
 };
 
 const LEVELS = ['', 'Einsteiger', 'Fortgeschritten', 'Profi'];
@@ -149,7 +150,49 @@ const EXERCISES = [
     muscles: 'Beine, Hüftbeuger, Ausdauer',
     steps: ['Auf der Stelle laufen.', 'Knie mindestens auf Hüfthöhe ziehen.', 'Arme aktiv mitschwingen.'],
     tip: 'Auf den Fußballen bleiben.' },
+
+  // ---------- Mobility & Dehnen ----------
+  { id: 'arm-circles', name: 'Armkreisen', cat: 'mobility', level: 1, type: 'time', def: 30, met: 2.5,
+    muscles: 'Schultern, Aufwärmen',
+    steps: ['Aufrecht stehen, Arme seitlich gestreckt.', 'Erst kleine, dann immer größere Kreise nach vorn.', 'Nach der Hälfte der Zeit Richtung wechseln.'],
+    tip: 'Perfekter Start vor jedem Klimmzugtraining.' },
+  { id: 'cat-cow', name: 'Katze-Kuh', cat: 'mobility', level: 1, type: 'time', def: 40, met: 2,
+    muscles: 'Wirbelsäule, Rücken',
+    steps: ['Vierfüßlerstand, Hände unter den Schultern.', 'Einatmen: Rücken durchhängen lassen, Blick nach vorn.', 'Ausatmen: Rücken rund machen, Kinn zur Brust.'],
+    tip: 'Langsam im Atemrhythmus bewegen.' },
+  { id: 'world-greatest-stretch', name: "World's Greatest Stretch", cat: 'mobility', level: 1, type: 'time', def: 40, met: 3,
+    muscles: 'Hüfte, Brustwirbelsäule, Beine',
+    steps: ['Großer Ausfallschritt, beide Hände innen neben den vorderen Fuß.', 'Den Ellbogen Richtung Boden senken.', 'Arm zur Decke aufdrehen, Blick folgt – Seite wechseln.'],
+    tip: 'Eine Übung, die fast alles mobilisiert.' },
+  { id: 'hip-flexor-stretch', name: 'Hüftbeuger-Dehnung', cat: 'mobility', level: 1, type: 'time', def: 40, met: 2,
+    muscles: 'Hüftbeuger, Oberschenkel vorn',
+    steps: ['Kniestand im Ausfallschritt, hinteres Knie auf einer Unterlage.', 'Po anspannen und Hüfte sanft nach vorn schieben.', 'Halten, dann Seite wechseln.'],
+    tip: 'Hilft gegen Sitzhaltung und Hohlkreuz.' },
+  { id: 'hamstring-stretch', name: 'Beinrückseiten-Dehnung', cat: 'mobility', level: 1, type: 'time', def: 40, met: 2,
+    muscles: 'Hintere Oberschenkel',
+    steps: ['Ein Bein gestreckt auf eine niedrige Erhöhung legen.', 'Mit geradem Rücken aus der Hüfte nach vorn neigen.', 'Halten, Seite wechseln.'],
+    tip: 'Rücken lang lassen – nicht zum Knie runden.' },
+  { id: 'doorway-chest-stretch', name: 'Brustdehnung am Türrahmen', cat: 'mobility', level: 1, type: 'time', def: 30, met: 2,
+    muscles: 'Brust, vordere Schulter',
+    steps: ['Unterarm im 90°-Winkel an den Türrahmen legen.', 'Mit dem Körper langsam nach vorn drehen.', 'Halten, Seite wechseln.'],
+    tip: 'Ausgleich zu Liegestützen und Dips.' },
+  { id: 'lat-stretch', name: 'Latissimus-Dehnung', cat: 'mobility', level: 1, type: 'time', def: 30, met: 2,
+    muscles: 'Latissimus, Schultern',
+    steps: ['Vor einer Stuhllehne oder Wand knien.', 'Arme gestreckt auflegen und den Oberkörper nach unten sinken lassen.', 'Brust Richtung Boden, ruhig atmen.'],
+    tip: 'Pflicht nach jedem Klimmzugtraining.' },
+  { id: 'childs-pose', name: 'Kindhaltung', cat: 'mobility', level: 1, type: 'time', def: 45, met: 1.5,
+    muscles: 'Rücken, Hüfte, Entspannung',
+    steps: ['Fersensitz, Knie leicht geöffnet.', 'Oberkörper nach vorn ablegen, Arme lang ausstrecken.', 'Tief in den Rücken atmen und loslassen.'],
+    tip: 'Der perfekte Abschluss jedes Workouts.' },
 ];
+
+// Aufwärmen und Cool-down – werden auf Wunsch vor/nach Workouts gestartet
+const WARMUP = { id: 'warmup', name: 'Aufwärmen', level: 1, focus: 'mobility', rounds: 1, rest: 5, roundRest: 0,
+  desc: 'Drei Minuten, die Gelenke und Puls auf Training vorbereiten.',
+  steps: [['arm-circles', 30], ['jumping-jacks', 30], ['cat-cow', 30], ['world-greatest-stretch', 40], ['high-knees', 20], ['scapula-pullup', 8]] };
+const COOLDOWN = { id: 'cooldown', name: 'Cool-down & Dehnen', level: 1, focus: 'mobility', rounds: 1, rest: 5, roundRest: 0,
+  desc: 'Runterkommen, dehnen, regenerieren – deine Muskeln danken es dir morgen.',
+  steps: [['lat-stretch', 30], ['doorway-chest-stretch', 30], ['hip-flexor-stretch', 40], ['hamstring-stretch', 40], ['childs-pose', 45]] };
 
 // Fertige Workouts. steps: [Übung, Menge] – Menge = Wdh. oder Sekunden je nach Übungstyp.
 // work: feste Arbeitszeit in Sek. (Intervall-Workouts), rest: Pause zwischen Übungen, roundRest: zwischen Runden.
@@ -181,6 +224,9 @@ const WORKOUTS = [
   { id: 'quick-7', name: 'Quick 7', level: 1, focus: 'cardio', rounds: 1, rest: 10, roundRest: 0, work: 30,
     desc: 'Sieben Minuten, kein Equipment, keine Ausrede. Für volle Tage.',
     steps: [['jumping-jacks'], ['wall-sit'], ['pushup'], ['bicycle-crunch'], ['squat'], ['chair-dips'], ['plank'], ['high-knees'], ['lunge'], ['side-plank'], ['mountain-climber'], ['superman']] },
+  { id: 'mobility-flow', name: 'Mobility Flow', level: 1, focus: 'mobility', rounds: 2, rest: 10, roundRest: 30,
+    desc: 'Beweglichkeit für Schultern, Hüfte und Rücken. Ideal an Ruhetagen zwischen den Klimmzug-Einheiten.',
+    steps: [['arm-circles', 30], ['cat-cow', 40], ['world-greatest-stretch', 40], ['hip-flexor-stretch', 40], ['lat-stretch', 30], ['hamstring-stretch', 40], ['childs-pose', 45]] },
 ];
 
 // YouTube-Tutorial pro Übung (aus Websuche recherchiert). Fehlt eines, verlinkt die App eine YouTube-Suche.
@@ -216,5 +262,13 @@ const VIDEOS = {
   "superman": { id: "z6PJMT2y8GQ", title: "Exercise Tutorial – Superman", channel: "" },
   "burpee": { id: "wGvBfVeCNko", title: "Burpees for Beginners (Step by Step)", channel: "" },
   "jumping-jacks": { id: "nGaXj3kkmrU", title: "How to Do Jumping Jacks Properly", channel: "" },
-  "high-knees": { id: "hfzdvWC_ZTw", title: "How To Do Perfect High Knees", channel: "" }
+  "high-knees": { id: "hfzdvWC_ZTw", title: "How To Do Perfect High Knees", channel: "" },
+  "arm-circles": { id: "1Jmkec0CiQs", title: "Mobilität – Armkreisen", channel: "" },
+  "cat-cow": { id: "9lWHSXdrT0E", title: "Tutorial: So geht Cat-Cow richtig", channel: "" },
+  "world-greatest-stretch": { id: "-CiWQ2IvY34", title: "The World's Greatest Stretch", channel: "Squat University" },
+  "hip-flexor-stretch": { id: "WF1fXBam3RU", title: "Workout ohne Geräte: Dehnung Hüftbeuger", channel: "BARMER" },
+  "hamstring-stretch": { id: "cZrwnHCmuwM", title: "Correct Way to Stretch Hamstrings (in 1 Minute)", channel: "Bob & Brad" },
+  "doorway-chest-stretch": { id: "KQF0-vtWaaE", title: "How to Stretch Your Chest – Pec Major & Minor", channel: "Bob & Brad" },
+  "lat-stretch": { id: "yMPkUqZX1fI", title: "How To: Kneeling Lat Stretch", channel: "" },
+  "childs-pose": { id: "HzsaXwNXjCs", title: "Wie macht man die Kindhaltung?", channel: "" }
 };
