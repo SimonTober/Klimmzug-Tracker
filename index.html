@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="theme-color" content="#0f0f0f"/>
 <title>Klimmzug-Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
@@ -104,6 +105,16 @@ button:active{transform:scale(0.97);}
 .popup .sets-summary{font-family:'DM Mono',monospace;font-size:12px;color:var(--text);margin:10px 0;line-height:1.8;}
 .popup-close{margin-top:1rem;width:100%;}
 
+.set-btn{width:100%;font-family:inherit;}
+.set-btn span{display:block;}
+button:focus-visible,input:focus-visible,.cal-day:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
+.stats div{text-align:center;}
+.stats b{display:block;font-family:'Bebas Neue',sans-serif;font-size:26px;font-weight:400;color:var(--text);line-height:1.1;}
+.stats small{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+.actions button{font-size:12px;padding:7px 12px;}
+.pick-next button{margin-top:8px;}
 @media(max-width:640px){.grid{grid-template-columns:1fr;}.col-right{order:-1;}header h1{font-size:32px;}}
 </style>
 </head>
@@ -129,6 +140,11 @@ button:active{transform:scale(0.97);}
         </div>
         <div class="prog-bg"><div class="prog-fill" id="progressBar"></div></div>
         <div class="prog-label" id="progressText"></div>
+        <div class="stats">
+          <div><b id="statSessions">0</b><small>Einheiten</small></div>
+          <div><b id="statReps">0</b><small>Wdh. gesamt</small></div>
+          <div><b id="statDays">0</b><small>Tage bis Ende 2026</small></div>
+        </div>
         <div class="goal-edit-row">
           <label>Mein Max:</label>
           <input type="number" id="maxInput" value="8" min="1" max="50"/>
@@ -143,16 +159,17 @@ button:active{transform:scale(0.97);}
         <div class="card-title">Training — <span id="sessionLabel">Session 1</span></div>
         <div class="plan-info" id="planInfo"></div>
         <div class="sets-grid" id="setsGrid"></div>
+        <div class="actions"><button id="undoBtn" onclick="undoSet()">↶ Letzten Satz zurücknehmen</button></div>
 
         <!-- After session prompt -->
         <div class="pick-next" id="pickNextPrompt">
-          <p>✓ Training abgeschlossen! Wähle jetzt deinen nächsten Trainingstag im Kalender.</p>
-          <small>Empfehlung: mindestens 2 Tage Pause.</small>
+          <p id="pickNextText"></p>
+          <button class="btn-accent" onclick="render()">Nächste Einheit vorbereiten</button>
         </div>
 
         <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
           <div class="card-title" style="margin-bottom:8px;">Stoppuhr — Pause</div>
-          <div class="sw-label">Zwischen den Sätzen messen</div>
+          <div class="sw-label">Startet automatisch nach jedem Satz</div>
           <div class="sw-display" id="swDisplay">0:00</div>
           <div class="btn-row">
             <button id="swBtn" class="btn-accent" onclick="toggleSW()">Start</button>
@@ -165,6 +182,12 @@ button:active{transform:scale(0.97);}
       <div class="card">
         <div class="card-title">Verlauf</div>
         <div id="historyList"><div class="empty-state">Noch kein Training eingetragen.</div></div>
+        <div class="actions">
+          <button onclick="exportData()">Backup exportieren</button>
+          <button onclick="document.getElementById('importFile').click()">Backup importieren</button>
+          <button class="btn-danger" onclick="deleteLastSession()">Letzte Einheit löschen</button>
+          <input type="file" id="importFile" accept="application/json,.json" hidden onchange="importData(event)"/>
+        </div>
       </div>
 
     </div>
@@ -204,17 +227,35 @@ button:active{transform:scale(0.97);}
 </div>
 
 <script>
-let state = JSON.parse(localStorage.getItem('kstate4') || 'null') || {
-  currentMax: 8, goal: 20, sessions: [], sessionCount: 0
-};
+const STORE_KEY = 'kstate4';
+const DEADLINE = new Date(2026, 11, 31);
+
+function loadState(){
+  const fresh = { currentMax: 8, goal: 20, sessions: [], sessionCount: 0, doneSets: 0 };
+  try {
+    const s = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
+    if (s && Array.isArray(s.sessions)) return Object.assign(fresh, s);
+  } catch(e) {}
+  return fresh;
+}
+let state = loadState();
 
 let calYear = new Date().getFullYear();
 let calMon = new Date().getMonth();
 let selectedDate = null;
-let swInterval = null, swSeconds = 0, swRunning = false;
+let swInterval = null, swBase = 0, swStart = 0, swRunning = false;
 let completedSets = [], currentSetIndex = 0, setsForSession = [];
+let sessionFinished = false, wakeLock = null;
 
-function save(){ localStorage.setItem('kstate4', JSON.stringify(state)); }
+function save(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e) {} }
+
+// ---- Datums-Helfer (alles in lokaler Zeit, kein UTC-Versatz) ----
+function pad(n){ return String(n).padStart(2,'0'); }
+function toStr(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function todayStr(){ return toStr(new Date()); }
+function parseDate(str){ const [y,m,d] = str.split('-').map(Number); return new Date(y, m-1, d); }
+function addDays(d, n){ const r = new Date(d); r.setDate(r.getDate()+n); return r; }
+function formatDate(str){ if(!str) return ''; const [y,m,d] = str.split('-'); return d+'.'+m+'.'+y; }
 
 function getSets(n, max){
   const base = Math.floor(max/2), high = base+1, s = [];
@@ -234,60 +275,106 @@ function render(){
 
   const n = state.sessionCount % 10;
   setsForSession = getSets(n, state.currentMax);
-  completedSets = new Array(10).fill(false);
-  currentSetIndex = 0;
+  // Angefangene Einheit nach Neuladen wiederherstellen
+  const done = Math.min(Math.max(parseInt(state.doneSets) || 0, 0), 9);
+  completedSets = setsForSession.map((_, i) => i < done);
+  currentSetIndex = done;
+  sessionFinished = false;
   document.getElementById('pickNextPrompt').style.display = 'none';
+  document.getElementById('calHint').textContent = 'Tag anklicken um Training zuzuordnen.';
 
   const base = Math.floor(state.currentMax / 2);
   document.getElementById('sessionLabel').textContent = 'Session ' + (state.sessions.length + 1);
   document.getElementById('planInfo').textContent = n + 'x ' + (base+1) + ' + ' + (10-n) + 'x ' + base + ' Wdh.';
 
-  renderSets(); renderCal(); renderHistory(); renderNext(); renderStreak();
+  renderSets(); renderCal(); renderHistory(); renderNext(); renderStreak(); renderStats();
 }
 
 function renderSets(){
   const grid = document.getElementById('setsGrid');
   grid.innerHTML = '';
   setsForSession.forEach((reps, i) => {
-    const btn = document.createElement('div');
-    btn.className = 'set-btn' + (completedSets[i] ? ' done' : (i === currentSetIndex ? ' active' : ''));
-    btn.innerHTML = '<div class="sl">Satz '+(i+1)+'</div><div class="sr">'+reps+'x</div>';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'set-btn' + (completedSets[i] ? ' done' : (i === currentSetIndex && !sessionFinished ? ' active' : ''));
+    btn.setAttribute('aria-label', 'Satz '+(i+1)+': '+reps+' Wiederholungen'+(completedSets[i] ? ', erledigt' : ''));
+    btn.innerHTML = '<span class="sl">Satz '+(i+1)+'</span><span class="sr">'+reps+'x</span>';
     btn.onclick = () => completeSet(i);
     grid.appendChild(btn);
   });
+  document.getElementById('undoBtn').disabled = sessionFinished || currentSetIndex === 0;
 }
 
 function completeSet(i){
-  if(i !== currentSetIndex) return;
+  if(sessionFinished || i !== currentSetIndex) return;
   completedSets[i] = true; currentSetIndex = i+1;
-  resetSW(); renderSets();
-  if(currentSetIndex >= 10) finishSession();
+  state.doneSets = currentSetIndex;
+  try { navigator.vibrate && navigator.vibrate(40); } catch(e) {}
+  if(currentSetIndex >= 10){ finishSession(); }
+  else {
+    save(); requestWake();
+    resetSW(); toggleSW();   // Pausen-Stoppuhr startet automatisch
+  }
+  renderSets();
+}
+
+function undoSet(){
+  if(sessionFinished || currentSetIndex === 0) return;
+  currentSetIndex--; completedSets[currentSetIndex] = false;
+  state.doneSets = currentSetIndex;
+  save(); resetSW(); renderSets();
 }
 
 function finishSession(){
   const dateStr = selectedDate || todayStr();
   state.sessionCount++;
   state.sessions.push({ date: dateStr, sets: [...setsForSession], max: state.currentMax });
-  save();
+  state.sessions.sort((a,b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+  state.doneSets = 0;
+  selectedDate = null;
+  sessionFinished = true;
+  save(); releaseWake(); resetSW();
+
+  const cycleDone = state.sessionCount % 10 === 0;
+  document.getElementById('pickNextText').textContent = cycleDone
+    ? '✓ Einheit gespeichert – Zyklus komplett (10 Einheiten)! Teste jetzt dein neues Max und trage es oben ein.'
+    : '✓ Einheit gespeichert! Empfehlung: mindestens 2 Tage Pause.';
   document.getElementById('pickNextPrompt').style.display = 'block';
-  document.getElementById('calHint').textContent = '✓ Training gespeichert! Wähle deinen nächsten Tag.';
-  renderCal(); renderHistory(); renderNext(); renderStreak();
+  document.getElementById('calHint').textContent = '✓ Training gespeichert!';
+  renderSets(); renderCal(); renderHistory(); renderNext(); renderStreak(); renderStats();
 }
 
-// Stopwatch
+// ---- Stoppuhr (zeitstempelbasiert, läuft auch bei gedrosseltem Tab korrekt) ----
+function swSecs(){ return Math.floor((swBase + (swRunning ? Date.now() - swStart : 0)) / 1000); }
 function toggleSW(){
   if(swRunning){
-    clearInterval(swInterval); swRunning = false;
+    swBase += Date.now() - swStart; clearInterval(swInterval); swRunning = false;
     document.getElementById('swBtn').textContent = 'Weiter';
+    updateSW();
   } else {
-    swRunning = true; document.getElementById('swBtn').textContent = 'Stop';
-    swInterval = setInterval(() => { swSeconds++; updateSW(); }, 1000);
+    swStart = Date.now(); swRunning = true;
+    document.getElementById('swBtn').textContent = 'Stop';
+    swInterval = setInterval(updateSW, 250);
   }
 }
-function resetSW(){ clearInterval(swInterval); swRunning = false; swSeconds = 0; updateSW(); document.getElementById('swBtn').textContent = 'Start'; }
-function updateSW(){ const m = Math.floor(swSeconds/60), s = swSeconds%60; document.getElementById('swDisplay').textContent = m+':'+(s<10?'0':'')+s; }
+function resetSW(){ clearInterval(swInterval); swRunning = false; swBase = 0; updateSW(); document.getElementById('swBtn').textContent = 'Start'; }
+function updateSW(){ const t = swSecs(), m = Math.floor(t/60), s = t%60; document.getElementById('swDisplay').textContent = m+':'+pad(s); }
 
-// Calendar
+// ---- Display wach halten während des Trainings ----
+async function requestWake(){
+  try {
+    if('wakeLock' in navigator && !wakeLock){
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    }
+  } catch(e) {}
+}
+function releaseWake(){ try { wakeLock && wakeLock.release(); } catch(e) {} wakeLock = null; }
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'visible' && currentSetIndex > 0 && !sessionFinished) requestWake();
+});
+
+// ---- Kalender ----
 const DE_DAYS = ['Mo','Di','Mi','Do','Fr','Sa','So'];
 const DE_MONTHS = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
 
@@ -305,31 +392,31 @@ function renderCal(){
 
   for(let i=0;i<offset;i++){ const el=document.createElement('div'); el.className='cal-day empty'; grid.appendChild(el); }
   for(let d=1;d<=dim;d++){
-    const ds = calYear+'-'+String(calMon+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const ds = calYear+'-'+pad(calMon+1)+'-'+pad(d);
     const el = document.createElement('div');
     let cls = 'cal-day';
     if(sessionMap[ds]) cls += ' has-session';
     if(ds === today) cls += ' today';
     if(ds === selectedDate) cls += ' selected';
     el.className = cls; el.textContent = d;
-    el.onclick = () => {
-      if(sessionMap[ds]) { showPopup(ds, sessionMap[ds]); }
-      else { selectDate(ds); }
-    };
+    el.setAttribute('role','button'); el.tabIndex = 0;
+    const act = () => { if(sessionMap[ds]) showPopup(ds, sessionMap[ds]); else selectDate(ds); };
+    el.onclick = act;
+    el.onkeydown = e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); act(); } };
     grid.appendChild(el);
   }
 }
 
 function selectDate(ds){
   selectedDate = ds;
-  document.getElementById('calHint').textContent = 'Ausgewählt: ' + formatDate(ds) + ' — Training starten.';
+  document.getElementById('calHint').textContent = 'Nächstes Training wird gespeichert für: ' + formatDate(ds) + '.';
   renderCal();
 }
 
 function prevMonth(){ calMon--; if(calMon<0){calMon=11;calYear--;} renderCal(); }
 function nextMonth(){ calMon++; if(calMon>11){calMon=0;calYear++;} renderCal(); }
 
-// Popup for past sessions
+// ---- Popup für vergangene Einheiten ----
 function showPopup(ds, session){
   document.getElementById('popupDate').textContent = formatDate(ds);
   document.getElementById('popupSession').textContent = 'Max damals: ' + session.max + ' Klimmzüge';
@@ -340,32 +427,45 @@ function showPopup(ds, session){
 }
 function closePopup(e){ if(e.target === document.getElementById('popupOverlay')) closePopupDirect(); }
 function closePopupDirect(){ document.getElementById('popupOverlay').classList.remove('show'); }
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closePopupDirect(); });
 
-// Next session
+// ---- Nächste Einheit ----
 function renderNext(){
   const box = document.getElementById('nextSessionBox');
   if(state.sessions.length === 0){
     box.innerHTML = '<div class="next-box ready"><div class="next-title">Nächstes Training</div><div class="next-date">Heute starten!</div><div class="next-sub">Leg jetzt los mit Session 1.</div></div>';
     return;
   }
-  const last = new Date(state.sessions[state.sessions.length-1].date);
-  const next = new Date(last); next.setDate(next.getDate()+2);
-  const today = new Date(); today.setHours(0,0,0,0);
+  const last = parseDate(state.sessions[state.sessions.length-1].date);
+  const next = addDays(last, 2);
+  const today = parseDate(todayStr());
   const diff = Math.round((next - today) / 86400000);
   let label, sub, cls;
   if(diff <= 0){ label = 'Bereit!'; sub = 'Genug pausiert — los geht\'s!'; cls = 'ready'; }
   else if(diff === 1){ label = 'Morgen'; sub = 'Noch 1 Tag Ruhe, dann bist du fit.'; cls = 'wait'; }
-  else { label = formatDate(next.toISOString().split('T')[0]); sub = 'Noch '+diff+' Tage Ruhe für optimale Regeneration.'; cls = 'wait'; }
+  else { label = formatDate(toStr(next)); sub = 'Noch '+diff+' Tage Ruhe für optimale Regeneration.'; cls = 'wait'; }
   box.innerHTML = '<div class="next-box '+cls+'"><div class="next-title">Empfohlenes Training</div><div class="next-date">'+label+'</div><div class="next-sub">'+sub+'</div></div>';
 }
 
+// ---- Serie: aufeinanderfolgende Wochen mit mindestens einer Einheit ----
+function weekKey(d){ return toStr(addDays(d, -((d.getDay()+6) % 7))); }  // Montag der Woche
 function renderStreak(){
-  if(state.sessions.length === 0){ document.getElementById('streakBadge').textContent = '0 Wochen'; return; }
-  const weeks = new Set(state.sessions.map(s => {
-    const d = new Date(s.date), soy = new Date(d.getFullYear(),0,1);
-    return d.getFullYear()+'-W'+Math.ceil(((d-soy)/86400000+soy.getDay()+1)/7);
-  }));
-  document.getElementById('streakBadge').textContent = '🔥 '+weeks.size+' Woche'+(weeks.size!==1?'n':'');
+  const keys = new Set(state.sessions.map(s => weekKey(parseDate(s.date))));
+  let w = parseDate(weekKey(new Date()));
+  if(!keys.has(toStr(w))) w = addDays(w, -7);   // aktuelle Woche darf noch offen sein
+  let streak = 0;
+  while(keys.has(toStr(w))){ streak++; w = addDays(w, -7); }
+  const badge = document.getElementById('streakBadge');
+  badge.textContent = streak === 0 ? '0 Wochen' : '🔥 '+streak+' Woche'+(streak!==1?'n':'');
+  badge.title = 'Aufeinanderfolgende Wochen mit Training';
+}
+
+function renderStats(){
+  const reps = state.sessions.reduce((a,s) => a + s.sets.reduce((x,y) => x+y, 0), 0);
+  const days = Math.max(0, Math.round((DEADLINE - parseDate(todayStr())) / 86400000));
+  document.getElementById('statSessions').textContent = state.sessions.length;
+  document.getElementById('statReps').textContent = reps;
+  document.getElementById('statDays').textContent = days;
 }
 
 function renderHistory(){
@@ -373,7 +473,7 @@ function renderHistory(){
   if(state.sessions.length === 0){ list.innerHTML = '<div class="empty-state">Noch kein Training eingetragen.</div>'; return; }
   list.innerHTML = [...state.sessions].reverse().slice(0,15).map(s => {
     const total = s.sets.reduce((a,b)=>a+b,0);
-    return '<div class="history-item"><span>'+formatDate(s.date)+(s.note?'<span class="badge">'+s.note+'</span>':'')+'</span><span class="history-reps">'+(s.sets.length>0 ? total+' Wdh. total' : 'Max: '+s.max)+'</span></div>';
+    return '<div class="history-item"><span>'+formatDate(s.date)+'</span><span class="history-reps">'+(s.sets.length>0 ? total+' Wdh. total · Max '+s.max : 'Max: '+s.max)+'</span></div>';
   }).join('');
 }
 
@@ -381,12 +481,51 @@ function updateGoals(){
   const max = parseInt(document.getElementById('maxInput').value);
   const goal = parseInt(document.getElementById('goalInput').value);
   if(!max||max<1||!goal||goal<1) return;
+  if(max !== state.currentMax) state.doneSets = 0;   // Plan ändert sich -> angefangene Einheit verwerfen
   state.currentMax = max; state.goal = goal;
-  save(); render();
+  save(); resetSW(); render();
 }
 
-function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
-function formatDate(str){ if(!str)return''; const[y,m,d]=str.split('-'); return d+'.'+m+'.'+y; }
+function deleteLastSession(){
+  if(state.sessions.length === 0) return;
+  const last = state.sessions[state.sessions.length-1];
+  if(!confirm('Einheit vom '+formatDate(last.date)+' wirklich löschen?')) return;
+  state.sessions.pop();
+  state.sessionCount = Math.max(0, state.sessionCount - 1);
+  state.doneSets = 0;
+  save(); resetSW(); render();
+}
+
+// ---- Backup ----
+function exportData(){
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'klimmzug-backup-'+todayStr()+'.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+function importData(e){
+  const file = e.target.files[0]; e.target.value = '';
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const d = JSON.parse(reader.result);
+      const ok = d && Array.isArray(d.sessions)
+        && Number.isInteger(d.currentMax) && d.currentMax > 0
+        && Number.isInteger(d.goal) && d.goal > 0
+        && d.sessions.every(s => /^\d{4}-\d{2}-\d{2}$/.test(s.date) && Array.isArray(s.sets) && s.sets.every(Number.isFinite) && Number.isFinite(s.max));
+      if(!ok) throw new Error('format');
+      if(!confirm('Aktuelle Daten durch das Backup ersetzen?')) return;
+      state = Object.assign({ sessionCount: d.sessions.length, doneSets: 0 }, d);
+      state.sessions.sort((a,b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+      state.doneSets = 0;
+      save(); resetSW(); render();
+    } catch(err) { alert('Diese Datei ist kein gültiges Klimmzug-Backup.'); }
+  };
+  reader.readAsText(file);
+}
 
 render();
 </script>
