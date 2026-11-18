@@ -2,687 +2,194 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<meta name="theme-color" content="#0f0f0f"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="theme-color" content="#0a0a0a"/>
 <link rel="manifest" href="manifest.json"/>
 <link rel="apple-touch-icon" href="icon-180.png"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Klimmzüge"/>
 <title>Klimmzug-Tracker</title>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#0f0f0f;--surface:#1a1a1a;--surface2:#222;--border:#2a2a2a;
-  --text:#f0ede8;--muted:#666;--accent:#c8f060;--accent-dim:#8aaa30;
-  --red:#ff5c5c;--radius:12px;
-}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:1.5rem 1rem 3rem;}
-.app{max-width:900px;margin:0 auto;}
-header{margin-bottom:1.5rem;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:8px;}
-header h1{font-family:'Bebas Neue',sans-serif;font-size:42px;letter-spacing:1px;color:var(--text);line-height:1;}
-header p{font-size:13px;color:var(--muted);}
-.streak-badge{background:var(--accent);color:#111;font-size:12px;font-weight:500;padding:5px 12px;border-radius:99px;white-space:nowrap;}
-.grid{display:grid;grid-template-columns:1fr 280px;gap:12px;}
-.col-left{display:flex;flex-direction:column;gap:12px;}
-.col-right{display:flex;flex-direction:column;gap:12px;}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;}
-.card-title{font-size:11px;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem;}
-
-/* Progress */
-.goal-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
-.goal-nums{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--text);}
-.goal-nums span{color:var(--accent);}
-.prog-bg{background:var(--border);border-radius:99px;height:6px;width:100%;overflow:hidden;}
-.prog-fill{background:var(--accent);height:6px;border-radius:99px;transition:width .5s ease;}
-.prog-label{font-size:11px;color:var(--muted);margin-top:5px;font-family:'DM Mono',monospace;}
-.goal-edit-row{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap;}
-.goal-edit-row label{font-size:12px;color:var(--muted);}
-input[type=number]{width:70px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:15px;font-family:'DM Mono',monospace;background:var(--surface2);color:var(--text);text-align:center;outline:none;}
-input[type=number]:focus{border-color:var(--accent);}
-
-/* Sets */
-.plan-info{font-size:12px;color:var(--muted);margin-bottom:12px;font-family:'DM Mono',monospace;}
-.sets-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
-.set-btn{border:1px solid var(--border);border-radius:8px;padding:10px 4px;text-align:center;cursor:pointer;background:var(--surface2);color:var(--text);transition:all .12s;user-select:none;}
-.set-btn .sl{font-size:10px;color:var(--muted);margin-bottom:3px;}
-.set-btn .sr{font-size:15px;font-family:'DM Mono',monospace;font-weight:500;}
-.set-btn.done{background:#1e2e0a;color:var(--accent);border-color:#4a6e14;}
-.set-btn.active{background:#1c2a00;color:var(--accent);border:2px solid var(--accent);}
-.set-btn:hover:not(.done):not(.active){border-color:#444;}
-
-/* Stopwatch */
-.sw-display{font-family:'Bebas Neue',sans-serif;font-size:56px;color:var(--accent);text-align:center;letter-spacing:2px;line-height:1;margin:0.5rem 0;}
-.sw-label{font-size:11px;color:var(--muted);text-align:center;margin-bottom:0.75rem;}
-.btn-row{display:flex;gap:8px;justify-content:center;}
-button{padding:9px 16px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface2);color:var(--text);cursor:pointer;transition:all .12s;}
-button:hover{border-color:#555;background:#2a2a2a;}
-button:active{transform:scale(0.97);}
-.btn-accent{background:var(--accent);color:#111;border-color:var(--accent);font-weight:500;}
-.btn-accent:hover{background:#b5da50;border-color:#b5da50;}
-.btn-danger{border-color:#ff5c5c44;color:var(--red);}
-.btn-danger:hover{background:#2a1010;}
-
-/* Calendar */
-.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
-.cal-month{font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--text);}
-.cal-nav{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:4px 8px;}
-.cal-nav:hover{color:var(--text);background:none;transform:none;}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
-.cal-day-label{font-size:10px;color:var(--muted);text-align:center;padding:4px 0;}
-.cal-day{border-radius:6px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;color:var(--muted);transition:all .1s;}
-.cal-day:hover{background:var(--surface2);color:var(--text);}
-.cal-day.has-session{background:#1e2e0a;color:var(--accent);font-weight:500;}
-.cal-day.today{border:1px solid var(--border);color:var(--text);}
-.cal-day.selected{background:var(--accent);color:#111;font-weight:500;}
-.cal-day.has-session.selected{background:var(--accent);color:#111;}
-.cal-day.empty{cursor:default;}
-.cal-day.empty:hover{background:none;}
-
-/* Next session box */
-.next-box{border-radius:8px;padding:1rem;}
-.next-box.ready{background:#1c2a00;border:1px solid #3a5a00;}
-.next-box.wait{background:var(--surface2);border:1px solid var(--border);}
-.next-title{font-size:11px;color:var(--accent-dim);margin-bottom:4px;letter-spacing:0.08em;text-transform:uppercase;}
-.next-date{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent);}
-.next-sub{font-size:12px;color:var(--muted);margin-top:3px;}
-.next-box.wait .next-date{color:var(--text);}
-
-/* After session: pick next day prompt */
-.pick-next{background:#1c2a00;border:1px solid #3a5a00;border-radius:8px;padding:1rem;margin-top:10px;display:none;}
-.pick-next p{font-size:13px;color:var(--accent);margin-bottom:6px;}
-.pick-next small{font-size:11px;color:var(--muted);}
-
-/* History */
-.history-item{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;}
-.history-item:last-child{border-bottom:none;}
-.history-reps{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);}
-.badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:99px;background:#1c2a00;color:var(--accent);margin-left:6px;}
-.empty-state{font-size:13px;color:var(--muted);}
-
-/* Popup */
-.popup-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:100;opacity:0;pointer-events:none;transition:opacity .2s;}
-.popup-overlay.show{opacity:1;pointer-events:all;}
-.popup{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;max-width:320px;width:90%;}
-.popup h3{font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--accent);margin-bottom:0.5rem;}
-.popup p{font-size:13px;color:var(--muted);margin-bottom:4px;}
-.popup .sets-summary{font-family:'DM Mono',monospace;font-size:12px;color:var(--text);margin:10px 0;line-height:1.8;}
-.popup-close{margin-top:1rem;width:100%;}
-
-.feel{display:flex;gap:6px;margin:8px 0;}
-.feel button{flex:1;font-size:18px;padding:6px 0;}
-.feel button.on{border-color:var(--accent);background:#1c2a00;}
-input[type=text]{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface2);color:var(--text);outline:none;}
-input[type=text]:focus{border-color:var(--accent);}
-.hint{font-size:11px;color:var(--muted);margin-top:6px;}
-.history-note{display:block;font-size:11px;color:var(--muted);margin-top:2px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.mini{padding:0 6px;margin-left:6px;font-size:11px;line-height:18px;border-radius:6px;}
-.chart{width:100%;height:auto;display:block;}
-.chart text{font-family:'DM Mono',monospace;font-size:8px;fill:#666;}
-.forecast{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5;}
-.forecast b{color:var(--accent);font-weight:500;}
-.set-btn{width:100%;font-family:inherit;}
-.set-btn span{display:block;}
-button:focus-visible,input:focus-visible,.cal-day:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
-.stats div{text-align:center;}
-.stats b{display:block;font-family:'Bebas Neue',sans-serif;font-size:26px;font-weight:400;color:var(--text);line-height:1.1;}
-.stats small{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
-.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
-.actions button{font-size:12px;padding:7px 12px;}
-.pick-next button{margin-top:8px;}
-@media(max-width:640px){.grid{grid-template-columns:1fr;}.col-right{order:-1;}header h1{font-size:32px;}}
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="styles.css"/>
 </head>
 <body>
 <div class="app">
-  <header>
-    <div>
-      <h1>Klimmzug-Tracker</h1>
-      <p>Ziel: <span id="goalDisplay">20</span> Klimmzüge — Ende 2026</p>
+
+  <!-- ================= HEUTE ================= -->
+  <main class="view active" id="view-home">
+    <div class="top">
+      <div>
+        <div class="hello" id="hello">Hi 👋</div>
+        <div class="sub" id="todayLine"></div>
+      </div>
+      <button class="icon-btn" onclick="go('profile')" aria-label="Fortschritt"><span data-i="trophy"></span></button>
     </div>
-    <div class="streak-badge" id="streakBadge">0 Wochen</div>
-  </header>
+    <div id="heroBox"></div>
 
-  <div class="grid">
-    <div class="col-left">
+    <div class="section"><h2>Dein Wochenplan</h2><button onclick="openOnboarding()">Anpassen</button></div>
+    <div id="planBox"></div>
 
-      <!-- Progress -->
-      <div class="card">
-        <div class="card-title">Fortschritt zum Ziel</div>
-        <div class="goal-row">
-          <div class="goal-nums">Max: <span id="maxDisplay">8</span></div>
-          <div style="font-size:12px;color:var(--muted);">Ziel: <span id="goalDisplay2">20</span></div>
-        </div>
-        <div class="prog-bg"><div class="prog-fill" id="progressBar"></div></div>
-        <div class="prog-label" id="progressText"></div>
-        <div class="stats">
-          <div><b id="statSessions">0</b><small>Einheiten</small></div>
-          <div><b id="statReps">0</b><small>Wdh. gesamt</small></div>
-          <div><b id="statDays">0</b><small>Tage bis Ende 2026</small></div>
-        </div>
-        <div class="goal-edit-row">
-          <label>Mein Max:</label>
-          <input type="number" id="maxInput" value="8" min="1" max="50"/>
-          <label>Ziel:</label>
-          <input type="number" id="goalInput" value="20" min="1" max="100"/>
-          <button class="btn-accent" onclick="updateGoals()">Aktualisieren</button>
-        </div>
-        <div class="goal-edit-row">
-          <label>Max-Test heute:</label>
-          <input type="number" id="testInput" min="1" max="100" placeholder="Wdh."/>
-          <button onclick="saveTest()">Test speichern</button>
-        </div>
-        <div class="hint">Maximum an sauberen Klimmzügen in einem Satz, ausgeruht getestet. Wird im Verlauf festgehalten und setzt dein Max.</div>
-      </div>
-
-      <!-- Verlauf-Diagramm -->
-      <div class="card">
-        <div class="card-title">Max-Verlauf</div>
-        <div id="chartBox"></div>
-        <div class="forecast" id="forecast"></div>
-      </div>
-
-      <!-- Training -->
-      <div class="card">
-        <div class="card-title">Training — <span id="sessionLabel">Session 1</span></div>
-        <div class="plan-info" id="planInfo"></div>
-        <div class="sets-grid" id="setsGrid"></div>
-        <div class="actions"><button id="undoBtn" onclick="undoSet()">↶ Letzten Satz zurücknehmen</button></div>
-
-        <!-- After session prompt -->
-        <div class="pick-next" id="pickNextPrompt">
-          <p id="pickNextText"></p>
-          <div class="feel" id="feelRow" role="group" aria-label="Wie fühlte sich die Einheit an?"></div>
-          <input type="text" id="noteInput" maxlength="200" placeholder="Notiz, z. B. Griff, Müdigkeit, Schlaf …" oninput="saveNote()"/>
-          <button class="btn-accent" onclick="render()">Nächste Einheit vorbereiten</button>
-        </div>
-
-        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
-          <div class="card-title" style="margin-bottom:8px;">Stoppuhr — Pause</div>
-          <div class="sw-label">Startet automatisch nach jedem Satz</div>
-          <div class="sw-display" id="swDisplay">0:00</div>
-          <div class="btn-row">
-            <button id="swBtn" class="btn-accent" onclick="toggleSW()">Start</button>
-            <button class="btn-danger" onclick="resetSW()">Reset</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- History -->
-      <div class="card">
-        <div class="card-title">Verlauf</div>
-        <div id="historyList"><div class="empty-state">Noch kein Training eingetragen.</div></div>
-        <div class="actions">
-          <button onclick="exportData()">Backup exportieren</button>
-          <button onclick="document.getElementById('importFile').click()">Backup importieren</button>
-          <button class="btn-danger" onclick="deleteLastSession()">Letzte Einheit löschen</button>
-          <input type="file" id="importFile" accept="application/json,.json" hidden onchange="importData(event)"/>
-        </div>
-      </div>
-
+    <div class="section"><h2>Diese Woche</h2><button onclick="openSettings()">Einstellungen</button></div>
+    <div class="card ring-card">
+      <div class="ring" id="weekRing"></div>
+      <div class="tiles" id="weekStats"></div>
     </div>
-    <div class="col-right">
 
-      <!-- Calendar -->
-      <div class="card">
-        <div class="card-title">Kalender</div>
-        <div class="cal-header">
-          <button class="cal-nav" onclick="prevMonth()">&#8592;</button>
-          <div class="cal-month" id="calMonth"></div>
-          <button class="cal-nav" onclick="nextMonth()">&#8594;</button>
-        </div>
-        <div class="cal-grid" id="calGrid"></div>
-        <div style="margin-top:10px;font-size:12px;color:var(--muted);" id="calHint">Tag anklicken um Training zuzuordnen.</div>
-      </div>
+    <div class="section"><h2>Klimmzug-Programm</h2><button onclick="go('pullup')">Öffnen</button></div>
+    <div id="pullupTeaser"></div>
 
-      <!-- Next session -->
-      <div class="card">
-        <div class="card-title">Nächste Einheit</div>
-        <div id="nextSessionBox"></div>
-      </div>
+    <div class="section"><h2>Letzte Aktivitäten</h2><button onclick="go('profile')">Alle</button></div>
+    <div id="recentList"></div>
+  </main>
 
+  <!-- ================= WORKOUTS ================= -->
+  <main class="view" id="view-workouts">
+    <div class="top"><div><div class="h1">Workouts<br/><em>ohne Geräte.</em></div><div class="sub">Zu Hause oder an der Klimmzugstange.</div></div></div>
+    <div class="chips" id="workoutChips"></div>
+    <div class="w-grid" id="workoutGrid"></div>
+  </main>
+
+  <!-- ================= ÜBUNGEN ================= -->
+  <main class="view" id="view-library">
+    <div class="top"><div><div class="h1">Übungen</div><div class="sub" id="libCount"></div></div></div>
+    <label class="search"><span data-i="search"></span><input type="search" id="libSearch" placeholder="Übung oder Muskel suchen …" oninput="renderLibrary()"/></label>
+    <div class="chips" id="libChips"></div>
+    <div class="ex-grid" id="libGrid"></div>
+  </main>
+
+  <!-- ================= KLIMMZUG ================= -->
+  <main class="view" id="view-pullup">
+    <div class="top">
+      <div><div class="h1">Klimmzug-<br/><em>Programm</em></div><div class="sub">Ziel: <span id="goalDisplay">20</span> Klimmzüge bis Ende 2026</div></div>
+      <div class="pill lime" id="streakBadge">0 Wochen</div>
     </div>
-  </div>
+
+    <div class="card ring-card">
+      <div class="ring" id="goalRing"></div>
+      <div style="flex:1">
+        <div class="label">Fortschritt</div>
+        <div style="font-size:30px;font-weight:800;letter-spacing:-1px">Max <span id="maxDisplay" style="color:var(--lime)">8</span></div>
+        <div class="sub">Ziel: <span id="goalDisplay2">20</span> · <span id="progressText"></span></div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn btn-ghost" style="padding:9px 14px;font-size:13px" onclick="openGoalSheet()">Max / Ziel</button>
+          <button class="btn btn-lime" style="padding:9px 14px;font-size:13px" onclick="openTestSheet()">Max-Test</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="tiles" style="margin-top:12px">
+      <div class="tile"><b id="statSessions">0</b><small>Einheiten</small></div>
+      <div class="tile"><b id="statReps">0</b><small>Wdh. gesamt</small></div>
+      <div class="tile"><b id="statDays">0</b><small>Tage bis Ende 2026</small></div>
+    </div>
+
+    <div class="section"><h2>Training — <span id="sessionLabel">Session 1</span></h2></div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between;margin-bottom:12px">
+        <div class="sub" id="planInfo" style="margin:0"></div>
+        <label class="pill" style="cursor:pointer">📅 <input type="date" id="sessionDate" onchange="selectDate(this.value)" style="background:none;border:none;color:inherit;font:inherit;width:110px"/></label>
+      </div>
+      <div class="sets-grid" id="setsGrid"></div>
+      <div class="row" style="margin-top:10px"><button class="btn btn-ghost" style="padding:8px 14px;font-size:12px" id="undoBtn" onclick="undoSet()">↶ Letzten Satz zurück</button></div>
+
+      <div class="pick-next" id="pickNextPrompt">
+        <p id="pickNextText"></p>
+        <div class="feel" id="feelRow" role="group" aria-label="Wie fühlte sich die Einheit an?"></div>
+        <input type="text" class="txt" id="noteInput" maxlength="200" placeholder="Notiz, z. B. Griff, Müdigkeit, Schlaf …" oninput="saveNote()"/>
+        <button class="btn btn-lime btn-block" style="margin-top:10px" onclick="render()">Nächste Einheit vorbereiten</button>
+      </div>
+
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--line)">
+        <div class="label" style="text-align:center">Pause · startet automatisch nach jedem Satz</div>
+        <div class="sw" id="swDisplay">0:00</div>
+        <div class="row center">
+          <button id="swBtn" class="btn btn-lime" onclick="toggleSW()">Start</button>
+          <button class="btn btn-ghost" onclick="resetSW()">Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section"><h2>Nächste Einheit</h2></div>
+    <div id="nextSessionBox"></div>
+
+    <div class="section"><h2>Max-Verlauf</h2></div>
+    <div class="card">
+      <div id="chartBox"></div>
+      <div class="forecast" id="forecast"></div>
+    </div>
+  </main>
+
+  <!-- ================= FORTSCHRITT ================= -->
+  <main class="view" id="view-profile">
+    <div class="top">
+      <div><div class="h1">Dein<br/><em>Fortschritt</em></div></div>
+      <button class="icon-btn" onclick="openSettings()" aria-label="Einstellungen"><span data-i="gear"></span></button>
+    </div>
+
+    <div class="tiles" id="totalStats"></div>
+
+    <div class="section"><h2>Aktivität</h2></div>
+    <div class="card">
+      <div class="seg" id="barSeg"><button class="on" data-r="7">7 Tage</button><button data-r="8w">8 Wochen</button></div>
+      <div class="bars" id="bars"></div>
+      <div class="sub" id="barsSum" style="margin-top:10px"></div>
+    </div>
+
+    <div class="section"><h2>Erfolge</h2><span class="sub" id="badgeCount"></span></div>
+    <div class="badges" id="badges"></div>
+
+    <div class="section"><h2>Kalender</h2></div>
+    <div class="card">
+      <div class="cal-head">
+        <button class="icon-btn" style="width:34px;height:34px" onclick="prevMonth()" aria-label="Vorheriger Monat">‹</button>
+        <b id="calMonth"></b>
+        <button class="icon-btn" style="width:34px;height:34px" onclick="nextMonth()" aria-label="Nächster Monat">›</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="legend"><span><i style="background:var(--lime)"></i>Klimmzug-Einheit</span><span><i style="background:var(--lime-soft);border:1px solid var(--lime)"></i>Workout</span></div>
+    </div>
+
+    <div class="section"><h2>Verlauf</h2></div>
+    <div id="historyList"></div>
+
+    <div class="section"><h2>Daten</h2></div>
+    <div class="card">
+      <div class="row">
+        <button class="btn btn-lime" onclick="shareData()">Auf anderes Gerät übertragen</button>
+        <button class="btn btn-ghost" onclick="exportData()">Backup exportieren</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('importFile').click()">Backup importieren</button>
+        <button class="btn btn-danger" onclick="deleteLastSession()">Letzte Klimmzug-Einheit löschen</button>
+      </div>
+      <input type="file" id="importFile" accept="application/json,.json" hidden onchange="importData(event)"/>
+      <div class="hint">Deine Daten liegen nur auf diesem Gerät. Zum Wechseln zwischen iPhone und MacBook: „Übertragen“ tippen, per AirDrop senden und auf dem anderen Gerät „Backup importieren“ wählen.</div>
+    </div>
+  </main>
 </div>
 
-<!-- Popup -->
-<div class="popup-overlay" id="popupOverlay" onclick="closePopup(event)">
-  <div class="popup">
-    <h3 id="popupDate"></h3>
-    <p id="popupSession"></p>
-    <div class="sets-summary" id="popupSets"></div>
-    <p id="popupTotal" style="font-size:12px;color:var(--accent);margin-top:4px;"></p>
-    <p id="popupNote" style="font-size:12px;color:var(--text);margin-top:6px;"></p>
-    <button class="btn-accent popup-close" onclick="closePopupDirect()">Schließen</button>
-  </div>
-</div>
+<!-- Tabbar -->
+<nav class="tabbar" id="tabbar">
+  <button data-tab="home" class="on"><span data-i="home"></span>Heute</button>
+  <button data-tab="workouts"><span data-i="zap"></span>Workouts</button>
+  <button data-tab="library"><span data-i="grid"></span>Übungen</button>
+  <button data-tab="pullup"><span data-i="bar"></span>Klimmzug</button>
+  <button data-tab="profile"><span data-i="chart"></span>Fortschritt</button>
+</nav>
 
-<script>
-const STORE_KEY = 'kstate4';
-const DEADLINE = new Date(2026, 11, 31);
+<!-- Bottom-Sheet -->
+<div class="scrim" id="scrim" onclick="closeSheet()"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true"><div class="grab"></div><div id="sheetBody"></div></div>
 
-function loadState(){
-  const fresh = { currentMax: 8, goal: 20, sessions: [], sessionCount: 0, doneSets: 0, tests: [] };
-  try {
-    const s = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
-    if (s && Array.isArray(s.sessions)) return Object.assign(fresh, s);
-  } catch(e) {}
-  return fresh;
-}
-let state = loadState();
+<!-- Workout-Player -->
+<div class="player" id="player" role="dialog" aria-modal="true" aria-label="Workout"></div>
 
-let calYear = new Date().getFullYear();
-let calMon = new Date().getMonth();
-let selectedDate = null;
-let swInterval = null, swBase = 0, swStart = 0, swRunning = false;
-let completedSets = [], currentSetIndex = 0, setsForSession = [];
-let sessionFinished = false, wakeLock = null, lastSession = null;
-const FEELS = ['😫','😕','😐','🙂','💪'];
-const FEEL_TXT = ['sehr schwer','schwer','okay','gut','stark'];
-function esc(t){ return String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function sortByDate(a){ a.sort((x,y) => x.date < y.date ? -1 : x.date > y.date ? 1 : 0); }
+<div class="toast" id="toast"></div>
+<canvas id="confetti"></canvas>
 
-function save(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e) {} }
-
-// ---- Datums-Helfer (alles in lokaler Zeit, kein UTC-Versatz) ----
-function pad(n){ return String(n).padStart(2,'0'); }
-function toStr(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
-function todayStr(){ return toStr(new Date()); }
-function parseDate(str){ const [y,m,d] = str.split('-').map(Number); return new Date(y, m-1, d); }
-function addDays(d, n){ const r = new Date(d); r.setDate(r.getDate()+n); return r; }
-function formatDate(str){ if(!str) return ''; const [y,m,d] = str.split('-'); return d+'.'+m+'.'+y; }
-
-function getSets(n, max){
-  const base = Math.floor(max/2), high = base+1, s = [];
-  for(let i=0;i<10;i++) s.push(i<n ? high : base);
-  return s;
-}
-
-function render(){
-  const goal = state.goal || 20;
-  document.getElementById('maxDisplay').textContent = state.currentMax;
-  document.getElementById('maxInput').value = state.currentMax;
-  document.getElementById('goalInput').value = goal;
-  document.querySelectorAll('#goalDisplay,#goalDisplay2').forEach(el => el.textContent = goal);
-  const pct = Math.min(Math.round((state.currentMax / goal) * 100), 100);
-  document.getElementById('progressBar').style.width = pct + '%';
-  document.getElementById('progressText').textContent = state.currentMax + ' / ' + goal + ' Klimmzüge (' + pct + '%)';
-
-  const n = state.sessionCount % 10;
-  setsForSession = getSets(n, state.currentMax);
-  // Angefangene Einheit nach Neuladen wiederherstellen
-  const done = Math.min(Math.max(parseInt(state.doneSets) || 0, 0), 9);
-  completedSets = setsForSession.map((_, i) => i < done);
-  currentSetIndex = done;
-  sessionFinished = false; lastSession = null;
-  document.getElementById('pickNextPrompt').style.display = 'none';
-  document.getElementById('calHint').textContent = 'Tag anklicken um Training zuzuordnen.';
-
-  const base = Math.floor(state.currentMax / 2);
-  document.getElementById('sessionLabel').textContent = 'Session ' + (state.sessions.length + 1);
-  document.getElementById('planInfo').textContent = n + 'x ' + (base+1) + ' + ' + (10-n) + 'x ' + base + ' Wdh.';
-
-  renderSets(); renderCal(); renderHistory(); renderNext(); renderStreak(); renderStats(); renderChart();
-}
-
-function renderSets(){
-  const grid = document.getElementById('setsGrid');
-  grid.innerHTML = '';
-  setsForSession.forEach((reps, i) => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'set-btn' + (completedSets[i] ? ' done' : (i === currentSetIndex && !sessionFinished ? ' active' : ''));
-    btn.setAttribute('aria-label', 'Satz '+(i+1)+': '+reps+' Wiederholungen'+(completedSets[i] ? ', erledigt' : ''));
-    btn.innerHTML = '<span class="sl">Satz '+(i+1)+'</span><span class="sr">'+reps+'x</span>';
-    btn.onclick = () => completeSet(i);
-    grid.appendChild(btn);
-  });
-  document.getElementById('undoBtn').disabled = sessionFinished || currentSetIndex === 0;
-}
-
-function completeSet(i){
-  if(sessionFinished || i !== currentSetIndex) return;
-  completedSets[i] = true; currentSetIndex = i+1;
-  state.doneSets = currentSetIndex;
-  try { navigator.vibrate && navigator.vibrate(40); } catch(e) {}
-  if(currentSetIndex >= 10){ finishSession(); }
-  else {
-    save(); requestWake();
-    resetSW(); toggleSW();   // Pausen-Stoppuhr startet automatisch
-  }
-  renderSets();
-}
-
-function undoSet(){
-  if(sessionFinished || currentSetIndex === 0) return;
-  currentSetIndex--; completedSets[currentSetIndex] = false;
-  state.doneSets = currentSetIndex;
-  save(); resetSW(); renderSets();
-}
-
-function finishSession(){
-  const dateStr = selectedDate || todayStr();
-  state.sessionCount++;
-  lastSession = { date: dateStr, sets: [...setsForSession], max: state.currentMax };
-  state.sessions.push(lastSession);
-  sortByDate(state.sessions);
-  state.doneSets = 0;
-  selectedDate = null;
-  sessionFinished = true;
-  save(); releaseWake(); resetSW();
-
-  const cycleDone = state.sessionCount % 10 === 0;
-  document.getElementById('pickNextText').textContent = cycleDone
-    ? '✓ Einheit gespeichert – Zyklus komplett (10 Einheiten)! Mach jetzt einen Max-Test und trag ihn im Feld „Max-Test“ ein.'
-    : '✓ Einheit gespeichert! Empfehlung: mindestens 2 Tage Pause.';
-  renderFeel();
-  document.getElementById('noteInput').value = '';
-  document.getElementById('pickNextPrompt').style.display = 'block';
-  document.getElementById('calHint').textContent = '✓ Training gespeichert!';
-  renderSets(); renderCal(); renderHistory(); renderNext(); renderStreak(); renderStats(); renderChart();
-}
-
-// ---- Gefühl & Notiz zur gerade beendeten Einheit ----
-function renderFeel(){
-  const row = document.getElementById('feelRow');
-  row.innerHTML = '';
-  FEELS.forEach((e, i) => {
-    const b = document.createElement('button');
-    b.type = 'button'; b.textContent = e;
-    b.setAttribute('aria-label', FEEL_TXT[i]);
-    b.className = lastSession && lastSession.feel === i+1 ? 'on' : '';
-    b.onclick = () => { if(!lastSession) return; lastSession.feel = lastSession.feel === i+1 ? undefined : i+1; save(); renderFeel(); renderHistory(); };
-    row.appendChild(b);
-  });
-}
-function saveNote(){
-  if(!lastSession) return;
-  const v = document.getElementById('noteInput').value.trim();
-  if(v) lastSession.note = v; else delete lastSession.note;
-  save(); renderHistory();
-}
-
-// ---- Max-Test ----
-function saveTest(){
-  const inp = document.getElementById('testInput');
-  const v = parseInt(inp.value);
-  if(!v || v < 1 || v > 100){ inp.focus(); return; }
-  state.tests = state.tests || [];
-  state.tests.push({ date: todayStr(), max: v });
-  sortByDate(state.tests);
-  if(v !== state.currentMax) state.doneSets = 0;   // neuer Plan
-  state.currentMax = v;
-  inp.value = '';
-  save(); resetSW(); render();
-}
-function deleteTest(i){
-  const t = state.tests[i];
-  if(!t || !confirm('Max-Test vom '+formatDate(t.date)+' ('+t.max+') löschen? Dein aktuelles Max bleibt unverändert.')) return;
-  state.tests.splice(i, 1);
-  save(); render();
-}
-
-// ---- Stoppuhr (zeitstempelbasiert, läuft auch bei gedrosseltem Tab korrekt) ----
-function swSecs(){ return Math.floor((swBase + (swRunning ? Date.now() - swStart : 0)) / 1000); }
-function toggleSW(){
-  if(swRunning){
-    swBase += Date.now() - swStart; clearInterval(swInterval); swRunning = false;
-    document.getElementById('swBtn').textContent = 'Weiter';
-    updateSW();
-  } else {
-    swStart = Date.now(); swRunning = true;
-    document.getElementById('swBtn').textContent = 'Stop';
-    swInterval = setInterval(updateSW, 250);
-  }
-}
-function resetSW(){ clearInterval(swInterval); swRunning = false; swBase = 0; updateSW(); document.getElementById('swBtn').textContent = 'Start'; }
-function updateSW(){ const t = swSecs(), m = Math.floor(t/60), s = t%60; document.getElementById('swDisplay').textContent = m+':'+pad(s); }
-
-// ---- Display wach halten während des Trainings ----
-async function requestWake(){
-  try {
-    if('wakeLock' in navigator && !wakeLock){
-      wakeLock = await navigator.wakeLock.request('screen');
-      wakeLock.addEventListener('release', () => { wakeLock = null; });
-    }
-  } catch(e) {}
-}
-function releaseWake(){ try { wakeLock && wakeLock.release(); } catch(e) {} wakeLock = null; }
-document.addEventListener('visibilitychange', () => {
-  if(document.visibilityState === 'visible' && currentSetIndex > 0 && !sessionFinished) requestWake();
-});
-
-// ---- Kalender ----
-const DE_DAYS = ['Mo','Di','Mi','Do','Fr','Sa','So'];
-const DE_MONTHS = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
-
-function renderCal(){
-  document.getElementById('calMonth').textContent = DE_MONTHS[calMon] + ' ' + calYear;
-  const grid = document.getElementById('calGrid');
-  grid.innerHTML = '';
-  DE_DAYS.forEach(d => { const el = document.createElement('div'); el.className = 'cal-day-label'; el.textContent = d; grid.appendChild(el); });
-  const firstDay = new Date(calYear, calMon, 1).getDay();
-  const offset = (firstDay + 6) % 7;
-  const dim = new Date(calYear, calMon+1, 0).getDate();
-  const today = todayStr();
-  const sessionMap = {};
-  state.sessions.forEach(s => { sessionMap[s.date] = s; });
-
-  for(let i=0;i<offset;i++){ const el=document.createElement('div'); el.className='cal-day empty'; grid.appendChild(el); }
-  for(let d=1;d<=dim;d++){
-    const ds = calYear+'-'+pad(calMon+1)+'-'+pad(d);
-    const el = document.createElement('div');
-    let cls = 'cal-day';
-    if(sessionMap[ds]) cls += ' has-session';
-    if(ds === today) cls += ' today';
-    if(ds === selectedDate) cls += ' selected';
-    el.className = cls; el.textContent = d;
-    el.setAttribute('role','button'); el.tabIndex = 0;
-    const act = () => { if(sessionMap[ds]) showPopup(ds, sessionMap[ds]); else selectDate(ds); };
-    el.onclick = act;
-    el.onkeydown = e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); act(); } };
-    grid.appendChild(el);
-  }
-}
-
-function selectDate(ds){
-  selectedDate = ds;
-  document.getElementById('calHint').textContent = 'Nächstes Training wird gespeichert für: ' + formatDate(ds) + '.';
-  renderCal();
-}
-
-function prevMonth(){ calMon--; if(calMon<0){calMon=11;calYear--;} renderCal(); }
-function nextMonth(){ calMon++; if(calMon>11){calMon=0;calYear++;} renderCal(); }
-
-// ---- Popup für vergangene Einheiten ----
-function showPopup(ds, session){
-  document.getElementById('popupDate').textContent = formatDate(ds);
-  document.getElementById('popupSession').textContent = 'Max damals: ' + session.max + ' Klimmzüge';
-  const total = session.sets.reduce((a,b) => a+b, 0);
-  document.getElementById('popupSets').textContent = session.sets.map((r,i) => 'Satz '+(i+1)+': '+r+' Wdh.').join('\n');
-  document.getElementById('popupTotal').textContent = 'Gesamt: ' + total + ' Klimmzüge';
-  document.getElementById('popupNote').textContent =
-    (session.feel ? 'Gefühl: ' + FEELS[session.feel-1] + ' ' + FEEL_TXT[session.feel-1] : '') +
-    (session.feel && session.note ? '\n' : '') + (session.note ? 'Notiz: ' + session.note : '');
-  document.getElementById('popupNote').style.whiteSpace = 'pre-line';
-  document.getElementById('popupOverlay').classList.add('show');
-}
-function closePopup(e){ if(e.target === document.getElementById('popupOverlay')) closePopupDirect(); }
-function closePopupDirect(){ document.getElementById('popupOverlay').classList.remove('show'); }
-document.addEventListener('keydown', e => { if(e.key === 'Escape') closePopupDirect(); });
-
-// ---- Nächste Einheit ----
-function renderNext(){
-  const box = document.getElementById('nextSessionBox');
-  if(state.sessions.length === 0){
-    box.innerHTML = '<div class="next-box ready"><div class="next-title">Nächstes Training</div><div class="next-date">Heute starten!</div><div class="next-sub">Leg jetzt los mit Session 1.</div></div>';
-    return;
-  }
-  const last = parseDate(state.sessions[state.sessions.length-1].date);
-  const next = addDays(last, 2);
-  const today = parseDate(todayStr());
-  const diff = Math.round((next - today) / 86400000);
-  let label, sub, cls;
-  if(diff <= 0){ label = 'Bereit!'; sub = 'Genug pausiert — los geht\'s!'; cls = 'ready'; }
-  else if(diff === 1){ label = 'Morgen'; sub = 'Noch 1 Tag Ruhe, dann bist du fit.'; cls = 'wait'; }
-  else { label = formatDate(toStr(next)); sub = 'Noch '+diff+' Tage Ruhe für optimale Regeneration.'; cls = 'wait'; }
-  box.innerHTML = '<div class="next-box '+cls+'"><div class="next-title">Empfohlenes Training</div><div class="next-date">'+label+'</div><div class="next-sub">'+sub+'</div></div>';
-}
-
-// ---- Serie: aufeinanderfolgende Wochen mit mindestens einer Einheit ----
-function weekKey(d){ return toStr(addDays(d, -((d.getDay()+6) % 7))); }  // Montag der Woche
-function renderStreak(){
-  const keys = new Set(state.sessions.map(s => weekKey(parseDate(s.date))));
-  let w = parseDate(weekKey(new Date()));
-  if(!keys.has(toStr(w))) w = addDays(w, -7);   // aktuelle Woche darf noch offen sein
-  let streak = 0;
-  while(keys.has(toStr(w))){ streak++; w = addDays(w, -7); }
-  const badge = document.getElementById('streakBadge');
-  badge.textContent = streak === 0 ? '0 Wochen' : '🔥 '+streak+' Woche'+(streak!==1?'n':'');
-  badge.title = 'Aufeinanderfolgende Wochen mit Training';
-}
-
-function renderStats(){
-  const reps = state.sessions.reduce((a,s) => a + s.sets.reduce((x,y) => x+y, 0), 0);
-  const days = Math.max(0, Math.round((DEADLINE - parseDate(todayStr())) / 86400000));
-  document.getElementById('statSessions').textContent = state.sessions.length;
-  document.getElementById('statReps').textContent = reps;
-  document.getElementById('statDays').textContent = days;
-}
-
-// ---- Max-Verlauf + Prognose ----
-function maxPoints(){
-  const pts = state.sessions.map(s => ({ t: parseDate(s.date).getTime(), v: s.max }))
-    .concat((state.tests || []).map(x => ({ t: parseDate(x.date).getTime(), v: x.max, test: true })))
-    .sort((a, b) => a.t - b.t);
-  const todayT = parseDate(todayStr()).getTime();
-  if(!pts.length || pts[pts.length-1].v !== state.currentMax) pts.push({ t: todayT, v: state.currentMax, today: true });
-  return pts;
-}
-function renderChart(){
-  const box = document.getElementById('chartBox'), fc = document.getElementById('forecast');
-  const pts = maxPoints(), goal = state.goal || 20;
-  if(state.sessions.length + (state.tests || []).length < 2){
-    box.innerHTML = '<div class="empty-state">Nach zwei Einheiten oder Max-Tests siehst du hier deinen Verlauf.</div>';
-    fc.textContent = ''; return;
-  }
-  const W = 300, H = 130, L = 22, R = 8, T = 8, B = 18;
-  const t0 = pts[0].t, t1 = Math.max(pts[pts.length-1].t, t0 + 86400000);
-  const lo = Math.max(0, Math.min(...pts.map(p => p.v)) - 1), hi = Math.max(goal, ...pts.map(p => p.v)) + 1;
-  const x = t => L + (t - t0) / (t1 - t0) * (W - L - R);
-  const y = v => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
-  const line = pts.map((p,i) => (i ? 'L' : 'M') + x(p.t).toFixed(1) + ' ' + y(p.v).toFixed(1)).join(' ');
-  const dots = pts.map(p => p.test
-    ? '<circle cx="'+x(p.t).toFixed(1)+'" cy="'+y(p.v).toFixed(1)+'" r="4" fill="#0f0f0f" stroke="#f0ede8" stroke-width="1.5"/>'
-    : '<circle cx="'+x(p.t).toFixed(1)+'" cy="'+y(p.v).toFixed(1)+'" r="2.5" fill="#c8f060"/>').join('');
-  const fmt = t => { const d = new Date(t); return pad(d.getDate())+'.'+pad(d.getMonth()+1)+'.'; };
-  box.innerHTML = '<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Verlauf deines Maximums">'
-    + '<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(goal)+'" y2="'+y(goal)+'" stroke="#8aaa30" stroke-dasharray="3 3"/>'
-    + '<text x="'+(L-3)+'" y="'+(y(goal)+3)+'" text-anchor="end">'+goal+'</text>'
-    + '<text x="'+(L-3)+'" y="'+(y(lo)+3)+'" text-anchor="end">'+lo+'</text>'
-    + '<path d="'+line+'" fill="none" stroke="#c8f060" stroke-width="1.5"/>'+dots
-    + '<text x="'+L+'" y="'+(H-4)+'">'+fmt(t0)+'</text>'
-    + '<text x="'+(W/2)+'" y="'+(H-4)+'" text-anchor="middle" style="fill:#8a8a8a">○ Max-Test · ● Einheit</text>'
-    + '<text x="'+(W-R)+'" y="'+(H-4)+'" text-anchor="end">'+fmt(t1)+'</text></svg>';
-
-  // Prognose per linearer Regression (nur mit ≥ 14 Tagen Datenbasis aussagekräftig)
-  const days = (t1 - t0) / 86400000, left = Math.max(1, Math.round((DEADLINE - parseDate(todayStr())) / 86400000));
-  const need = goal - state.currentMax;
-  let txt = '';
-  if(need <= 0) txt = '<b>Ziel erreicht!</b> Zeit für ein neues Ziel.';
-  else {
-    txt = 'Bis Ende 2026 fehlen noch <b>'+need+'</b> Klimmzüge (≈ '+(need / left * 30).toFixed(1).replace('.',',')+' pro Monat nötig). ';
-    if(days >= 14){
-      const n = pts.length, mt = pts.reduce((a,p)=>a+(p.t-t0)/86400000,0)/n, mv = pts.reduce((a,p)=>a+p.v,0)/n;
-      let num = 0, den = 0;
-      pts.forEach(p => { const dx = (p.t-t0)/86400000 - mt; num += dx*(p.v-mv); den += dx*dx; });
-      const slope = den ? num/den : 0;   // Klimmzüge pro Tag
-      if(slope > 0){
-        const eta = new Date(parseDate(todayStr()).getTime() + (need / slope) * 86400000);
-        txt += 'Bei deinem Tempo erreichst du das Ziel ca. <b>'+formatDate(toStr(eta))+'</b>'
-          + (eta > DEADLINE ? ' – also nach dem Stichtag.' : ' – im Plan.');
-      } else txt += 'Dein Max stagniert bisher – trag es nach dem nächsten Test aktualisiert ein.';
-    } else txt += 'Eine Prognose gibt es nach 2 Wochen Training.';
-  }
-  fc.innerHTML = txt;
-}
-
-function renderHistory(){
-  const list = document.getElementById('historyList');
-  const items = state.sessions.map(x => ({ kind: 's', x }))
-    .concat((state.tests || []).map((x, i) => ({ kind: 't', x, i })));
-  if(items.length === 0){ list.innerHTML = '<div class="empty-state">Noch kein Training eingetragen.</div>'; return; }
-  items.sort((a, b) => a.x.date < b.x.date ? 1 : a.x.date > b.x.date ? -1 : (a.kind === 't' ? -1 : 1));
-  list.innerHTML = items.slice(0, 15).map(it => {
-    const s = it.x;
-    if(it.kind === 't'){
-      return '<div class="history-item"><span>'+formatDate(s.date)+'<span class="badge">Max-Test</span></span>'
-        + '<span class="history-reps">Max: '+s.max+'<button class="mini" aria-label="Max-Test löschen" onclick="deleteTest('+it.i+')">✕</button></span></div>';
-    }
-    const total = s.sets.reduce((a,b) => a+b, 0);
-    const extra = (s.feel ? FEELS[s.feel-1] + ' ' : '') + (s.note ? esc(s.note) : '');
-    return '<div class="history-item"><span>'+formatDate(s.date)+(extra ? '<span class="history-note">'+extra+'</span>' : '')+'</span>'
-      + '<span class="history-reps">'+total+' Wdh. total · Max '+s.max+'</span></div>';
-  }).join('');
-}
-
-function updateGoals(){
-  const max = parseInt(document.getElementById('maxInput').value);
-  const goal = parseInt(document.getElementById('goalInput').value);
-  if(!max||max<1||!goal||goal<1) return;
-  if(max !== state.currentMax) state.doneSets = 0;   // Plan ändert sich -> angefangene Einheit verwerfen
-  state.currentMax = max; state.goal = goal;
-  save(); resetSW(); render();
-}
-
-function deleteLastSession(){
-  if(state.sessions.length === 0) return;
-  const last = state.sessions[state.sessions.length-1];
-  if(!confirm('Einheit vom '+formatDate(last.date)+' wirklich löschen?')) return;
-  state.sessions.pop();
-  state.sessionCount = Math.max(0, state.sessionCount - 1);
-  state.doneSets = 0;
-  save(); resetSW(); render();
-}
-
-// ---- Backup ----
-function exportData(){
-  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'klimmzug-backup-'+todayStr()+'.json';
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-}
-function importData(e){
-  const file = e.target.files[0]; e.target.value = '';
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    try {
-      const d = JSON.parse(reader.result);
-      const ok = d && Array.isArray(d.sessions)
-        && Number.isInteger(d.currentMax) && d.currentMax > 0
-        && Number.isInteger(d.goal) && d.goal > 0
-        && (d.tests === undefined || (Array.isArray(d.tests) && d.tests.every(t => /^\d{4}-\d{2}-\d{2}$/.test(t.date) && Number.isFinite(t.max))))
-        && d.sessions.every(s => /^\d{4}-\d{2}-\d{2}$/.test(s.date) && Array.isArray(s.sets) && s.sets.every(Number.isFinite) && Number.isFinite(s.max));
-      if(!ok) throw new Error('format');
-      if(!confirm('Aktuelle Daten durch das Backup ersetzen?')) return;
-      state = Object.assign({ sessionCount: d.sessions.length, doneSets: 0, tests: [] }, d);
-      sortByDate(state.sessions); sortByDate(state.tests);
-      state.doneSets = 0;
-      save(); resetSW(); render();
-    } catch(err) { alert('Diese Datei ist kein gültiges Klimmzug-Backup.'); }
-  };
-  reader.readAsText(file);
-}
-
-if('serviceWorker' in navigator && location.protocol.startsWith('http')){
-  navigator.serviceWorker.register('sw.js').catch(() => {});
-}
-render();
-</script>
+<script src="data.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
